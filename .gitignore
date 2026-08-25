@@ -1,0 +1,16 @@
+# Dependencies and build output
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+
+# Local secrets - keep only .env.example in GitHub
+.env
+server/.env
+
+# Local editor and temporary files
+.vscode/
+work/
+outputs/
+*.log
+Thumbs.db
