@@ -11,7 +11,18 @@ A presentation-ready full-stack coding-practice project. It demonstrates the com
 - Contest list and live leaderboard computed from stored submissions
 - Polished responsive dashboard
 
-> The MVP deliberately does **not** execute untrusted code. It stores a submission and returns a clearly-labelled demo verdict. A production judge needs an isolated Docker/VM runner and queue.
+## Real local judge engine (JavaScript)
+
+The judge runs submitted JavaScript against hidden MySQL test cases inside a Docker container with **no network**, a 128 MB memory limit, process limits, a read-only filesystem and a 3-second timeout.
+
+1. Install and start Docker Desktop for Windows, then restart VS Code so the `docker` command is available in its terminal.
+2. In MySQL Workbench, run `database/judge_migration.sql` once.
+3. Pull the small runner image once: `docker pull node:20-alpine`.
+4. Restart the app with `npm run dev`.
+
+Supported languages are JavaScript, Python, C++17, and Java 21. Pull their runner images once: `docker pull node:20-alpine`, `docker pull python:3.12-alpine`, `docker pull gcc:14`, and `docker pull eclipse-temurin:21-jdk-alpine`.
+
+Each run has no network, 256 MB memory, a process limit, no Linux capabilities, a read-only submission mount, temporary in-container compiler storage, an output cap, and a time limit. Do not run submitted code directly on Windows or in the Express process.
 
 ## Windows / VS Code setup
 

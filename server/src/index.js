@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import { authenticate } from './auth.js';
+import { judgeSubmission, supportedLanguages } from './judge.js';
 dotenv.config();
 
 const app = express();
@@ -37,9 +38,17 @@ app.get('/api/problems/:slug', async (req, res) => { const [rows] = await pool.e
 app.post('/api/submissions', authenticate, async (req, res) => {
   const { problemId, language, sourceCode } = req.body;
   if (!problemId || !language || !sourceCode) return res.status(400).json({ message: 'Problem, language and code are required.' });
-  const verdict = 'Accepted'; // Deliberately deterministic MVP; plug in a sandboxed judge service later.
-  const [r] = await pool.execute('INSERT INTO submissions (user_id, problem_id, language, source_code, verdict, runtime_ms) VALUES (?, ?, ?, ?, ?, ?)', [req.user.id, problemId, language, sourceCode, verdict, 42]);
-  res.status(201).json({ id: r.insertId, verdict, runtimeMs: 42, message: 'Submission saved. MVP returns Accepted; no code is executed on this server.' });
+  if (!supportedLanguages.includes(language)) return res.status(400).json({ message: `Choose one of: ${supportedLanguages.join(', ')}.` });
+  if (sourceCode.length > 30000) return res.status(400).json({ message: 'Source code must be below 30 KB.' });
+  const [tests] = await pool.execute('SELECT input_data, expected_output FROM test_cases WHERE problem_id=? ORDER BY id', [problemId]);
+  if (!tests.length) return res.status(400).json({ message: 'This problem has no judge test cases yet.' });
+  try {
+    const result = await judgeSubmission(language, sourceCode, tests);
+    const [r] = await pool.execute('INSERT INTO submissions (user_id, problem_id, language, source_code, verdict, runtime_ms) VALUES (?, ?, ?, ?, ?, ?)', [req.user.id, problemId, language, sourceCode, result.verdict, result.runtimeMs]);
+    res.status(201).json({ id: r.insertId, ...result, message: result.detail || `Judged against ${tests.length} hidden test case(s).` });
+  } catch (error) {
+    res.status(error.code === 'JUDGE_UNAVAILABLE' ? 503 : 500).json({ message: error.message || 'Judge execution failed.' });
+  }
 });
 app.get('/api/submissions/me', authenticate, async (req, res) => { const [rows] = await pool.execute('SELECT s.id, p.title, s.language, s.verdict, s.runtime_ms, s.created_at FROM submissions s JOIN problems p ON p.id=s.problem_id WHERE s.user_id=? ORDER BY s.created_at DESC', [req.user.id]); res.json(rows); });
 app.get('/api/contests', async (_req, res) => { const [rows] = await pool.query('SELECT id, title, starts_at, duration_minutes, status FROM contests ORDER BY starts_at'); res.json(rows); });
