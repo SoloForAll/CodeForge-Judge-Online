@@ -11,7 +11,7 @@ A presentation-ready full-stack coding-practice project. It demonstrates the com
 - Contest list and live leaderboard computed from stored submissions
 - Polished responsive dashboard
 
-## Real local judge engine (JavaScript)
+## Real local judge engine
 
 The judge runs submitted JavaScript against hidden MySQL test cases inside a Docker container with **no network**, a 128 MB memory limit, process limits, a read-only filesystem and a 3-second timeout.
 
