@@ -1,21 +1,58 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { Code2, Trophy, Send, LogOut, CheckCircle2, Clock3, Users, ChevronRight, Terminal } from 'lucide-react';
-import api from './api';
+import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { Navbar } from './components/Navbar';
+import { HomePage } from './pages/HomePage';
+import { ProblemsCatalog } from './pages/ProblemsCatalog';
+import { ProblemWorkspace } from './pages/ProblemWorkspace';
+import { Contests } from './pages/Contests';
+import { ContestDetail } from './pages/ContestDetail';
+import { ContestStandings } from './pages/ContestStandings';
+import { Leaderboard } from './pages/Leaderboard';
+import { Discuss } from './pages/Discuss';
+import { Profile } from './pages/Profile';
+import { Auth } from './pages/Auth';
+
 import './styles.css';
 import './catalog.css';
 
-const difficultyClass = (d) => d.toLowerCase();
-function Header({ user, onLogout }) { return <header><Link className="brand" to="/"><span><Code2 size={23}/></span>Code<span className="brand-accent">Forge</span></Link><nav><Link to="/">Home</Link><Link to="/problems">Problems</Link><Link to="/contests">Contests</Link><Link to="/leaderboard">Leaderboard</Link><Link to="/discuss">Discuss</Link></nav><div className="account">{user ? <><span className="avatar">{user.name[0]}</span><span>{user.username}</span><button className="linkbutton" onClick={onLogout}><LogOut size={16}/>Logout</button></> : <><Link to="/login">Log in</Link><Link className="button small" to="/register">Register</Link></>}</div></header> }
-function Shell({ children, user, onLogout }) { return <><Header user={user} onLogout={onLogout}/><main>{children}</main></> }
-function Problems() { const [items,setItems]=useState([]); useEffect(()=>{api.get('/problems').then(r=>setItems(r.data));},[]); return <><section className="hero"><div><p className="eyebrow">PRACTICE. COMPETE. IMPROVE.</p><h1>Build your problem-solving edge.</h1><p className="muted">Solve curated problems, track accepted submissions and compete with your fellow coders.</p><div className="hero-actions"><Link className="button" to="/problems">Start solving <ChevronRight size={18}/></Link><Link className="ghost" to="/leaderboard">View leaderboard</Link></div></div><div className="stat-panel"><Terminal size={29}/><strong>{items.length || 4}</strong><span>curated challenges</span><div className="bar"><i/></div><small>Your next accepted solution starts here.</small></div></section><section className="metrics"><div><b>{items.length || 4}+</b><span>Problems</span></div><div><b>1,200+</b><span>Active Coders</span></div><div><b>45,000+</b><span>Submissions Judged</span></div><div><b>36</b><span>Contests Hosted</span></div></section><section className="why"><h2>Why CodeForge</h2><div className="why-grid"><article><Code2/><h3>Real Code Practice</h3><p>Write, save and submit solutions in one focused workspace.</p></article><article><Trophy/><h3>Contests & Rankings</h3><p>Compete in timed contests and follow the leaderboard.</p></article><article><Users/><h3>Community Learning</h3><p>Discuss approaches and keep improving with peers.</p></article><article><CheckCircle2/><h3>Instant Verdicts</h3><p>Get a clear saved result for every MVP submission.</p></article></div></section><section id="list" className="content"><div className="section-title"><div><p className="eyebrow">PROBLEM LIBRARY</p><h2>Choose a challenge</h2></div><span className="muted">{items.length} problems</span></div><div className="problem-list">{items.map(p=><Link to={`/problems/${p.slug}`} className="problem-card" key={p.id}><div className={`difficulty ${difficultyClass(p.difficulty)}`}>{p.difficulty}</div><div className="problem-main"><h3>{p.title}</h3><p>{p.tags}</p></div><div className="solved"><CheckCircle2 size={16}/>{p.solved_count} solved</div><ChevronRight className="arrow"/></Link>)}</div></section></> }
-function ProblemsCatalog(){const [items,setItems]=useState([]);useEffect(()=>{api.get('/problems').then(r=>setItems(r.data))},[]);return <section className="content page"><p className="eyebrow">PROBLEM LIBRARY</p><h1>Problems</h1><p className="muted">Choose a challenge and submit your solution.</p><div className="catalog-tools"><input placeholder="Search problems..."/><button className="chip">All difficulties</button><button className="chip">All topics</button></div><div className="problem-list">{items.map((p,i)=><Link to={`/problems/${p.slug}`} className="problem-card" key={p.id}><span className="problem-number">{i+1}</span><div className={`difficulty ${difficultyClass(p.difficulty)}`}>{p.difficulty}</div><div className="problem-main"><h3>{p.title}</h3><p>{p.tags}</p></div><div className="solved"><CheckCircle2 size={16}/>{p.solved_count} solved</div><ChevronRight className="arrow"/></Link>)}</div></section>}
-function Auth({ register, onAuth }) { const nav=useNavigate(); const [form,setForm]=useState({name:'',username:'',email:'',password:''}); const [error,setError]=useState(''); const submit=async e=>{e.preventDefault();try { const path=register?'/auth/register':'/auth/login'; const payload=register?form:{login:form.email,password:form.password}; const {data}=await api.post(path,payload); localStorage.setItem('token',data.token); onAuth(data.user); nav('/'); } catch(e){setError(e.response?.data?.message||'Something went wrong.');}}; return <div className="auth-wrap"><form className="auth-card" onSubmit={submit}><Link className="brand centered" to="/"><span><Code2 size={23}/></span>CodeForge</Link><h1>{register?'Create your account':'Welcome back'}</h1><p className="muted">{register?'Start your coding journey today.':'Log in to continue practicing.'}</p>{error&&<p className="error">{error}</p>}{register&&<label>Full name<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>}{register&&<label>Username<input required value={form.username} onChange={e=>setForm({...form,username:e.target.value})}/></label>}<label>Email or username<input required type={register?'email':'text'} value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Password<input required minLength="6" type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label><button className="button full">{register?'Create account':'Log in'}</button><p className="switch">{register?'Already have an account?':'New to CodeForge?'} <Link to={register?'/login':'/register'}>{register?'Log in':'Create one'}</Link></p></form></div> }
-function Detail({ user }) { const {slug}=useParams(),[p,setP]=useState(null),[code,setCode]=useState('// Write your solution here\n'),[message,setMessage]=useState(''); useEffect(()=>{api.get('/problems/'+slug).then(r=>setP(r.data));},[slug]); const submit=async()=>{if(!user) return setMessage('Please log in before submitting.');try {const {data}=await api.post('/submissions',{problemId:p.id,language:'JavaScript',sourceCode:code});setMessage(`${data.verdict} · ${data.runtimeMs} ms — ${data.message}`)}catch(e){setMessage(e.response?.data?.message)}}; if(!p)return <p className="loading">Loading challenge…</p>;return <div className="workspace"><article className="statement"><Link className="back" to="/">← All problems</Link><div className={`difficulty ${difficultyClass(p.difficulty)}`}>{p.difficulty}</div><h1>{p.title}</h1><p className="tags">{p.tags}</p><p>{p.description}</p><h3>Input format</h3><p>{p.input_format}</p><h3>Output format</h3><p>{p.output_format}</p><div className="example"><b>Example input</b><pre>{p.example_input}</pre><b>Example output</b><pre>{p.example_output}</pre></div></article><aside className="editor"><div className="editor-top"><span>JavaScript</span><span>main.js</span></div><textarea aria-label="Solution code" value={code} onChange={e=>{setCode(e.target.value);setMessage('')}}/><div className="submit-row"><span className={message.includes('Accepted')?'success':'notice'}>{message}</span><button className="button" onClick={submit}><Send size={16}/>Submit solution</button></div></aside></div> }
-function MultiLanguageDetail({ user }) { const {slug}=useParams(),[p,setP]=useState(null),[language,setLanguage]=useState('JavaScript'),[code,setCode]=useState('// Write your solution here\n'),[message,setMessage]=useState(''); useEffect(()=>{api.get('/problems/'+slug).then(r=>setP(r.data));},[slug]); const submit=async()=>{if(!user)return setMessage('Please log in before submitting.');try{const {data}=await api.post('/submissions',{problemId:p.id,language,sourceCode:code});setMessage(`${data.verdict} · ${data.runtimeMs} ms — ${data.message}`)}catch(e){setMessage(e.response?.data?.message)}};if(!p)return <p className="loading">Loading challenge…</p>;const file=language==='JavaScript'?'main.js':language==='Python'?'solution.py':language==='C++'?'solution.cpp':'Main.java';return <div className="workspace"><article className="statement"><Link className="back" to="/problems">← All problems</Link><div className={`difficulty ${difficultyClass(p.difficulty)}`}>{p.difficulty}</div><h1>{p.title}</h1><p className="tags">{p.tags}</p><p>{p.description}</p><h3>Input format</h3><p>{p.input_format}</p><h3>Output format</h3><p>{p.output_format}</p><div className="example"><b>Example input</b><pre>{p.example_input}</pre><b>Example output</b><pre>{p.example_output}</pre></div></article><aside className="editor"><div className="editor-top"><select aria-label="Programming language" value={language} onChange={e=>{setLanguage(e.target.value);setMessage('')}}><option>JavaScript</option><option>Python</option><option>C++</option><option>Java</option></select><span>{file}</span></div><textarea aria-label="Solution code" value={code} onChange={e=>{setCode(e.target.value);setMessage('')}}/><div className="submit-row"><span className={message.includes('Accepted')?'success':'notice'}>{message}</span><button className="button" onClick={submit}><Send size={16}/>Submit solution</button></div></aside></div> }
-function Contests(){const [items,setItems]=useState([]);useEffect(()=>{api.get('/contests').then(r=>setItems(r.data))},[]);return <section className="content page"><p className="eyebrow">COMPETE</p><h1>Upcoming contests</h1><div className="contest-grid">{items.map(c=><article className="contest" key={c.id}><div className="contest-icon"><Trophy/></div><span className="pill">{c.status}</span><h2>{c.title}</h2><p><Clock3 size={17}/>{new Date(c.starts_at).toLocaleString()}</p><p><Users size={17}/>{c.duration_minutes} minutes</p><button className="ghost disabled">Registration opens soon</button></article>)}</div></section>}
-function Leaderboard(){const [rows,setRows]=useState([]);useEffect(()=>{api.get('/leaderboard').then(r=>setRows(r.data))},[]);return <section className="content page"><p className="eyebrow">COMMUNITY</p><h1>Leaderboard</h1><p className="muted">Scores are calculated from accepted submissions stored in MySQL.</p><div className="table">{rows.length?rows.map((r,i)=><div className="table-row" key={r.username}><b>#{i+1}</b><span className="avatar">{r.name[0]}</span><strong>{r.username}</strong><span>{r.solved} solved</span><b>{r.score} pts</b></div>):<p className="empty">Be the first registered user to submit a solution.</p>}</div></section>}
-function Discuss(){const topics=[['Help','Best approach for Two Sum with O(n) time?','newbie_coder','24','2'],['Solutions','My clean solution for longest substring','recursion_queen','87','1'],['Contests','Weekly Challenge discussion thread','code_ninja','15','0']];return <section className="content page discussion"><p className="eyebrow">COMMUNITY</p><h1>Discussions</h1><div className="discussion-filter"><input placeholder="Search discussions..."/><button className="button small">All</button><button className="chip">Help</button><button className="chip">Solutions</button></div>{topics.map(([type,title,author,likes,replies])=><article className="topic" key={title}><span className="topic-type">{type}</span><h3>{title}</h3><p>by {author}</p><aside>👍 {likes} &nbsp; 💬 {replies}</aside></article>)}</section>}
-function App(){const [user,setUser]=useState(()=>{try{return JSON.parse(localStorage.getItem('user'))}catch{return null}});const onAuth=u=>{localStorage.setItem('user',JSON.stringify(u));setUser(u)};const logout=()=>{localStorage.clear();setUser(null)};return <Shell user={user} onLogout={logout}><Routes><Route path="/" element={<Problems/>}/><Route path="/problems" element={<ProblemsCatalog/>}/><Route path="/register" element={<Auth register onAuth={onAuth}/>}/><Route path="/login" element={<Auth onAuth={onAuth}/>}/><Route path="/problems/:slug" element={<MultiLanguageDetail user={user}/>}/><Route path="/contests" element={<Contests/>}/><Route path="/leaderboard" element={<Leaderboard/>}/><Route path="/discuss" element={<Discuss/>}/><Route path="*" element={<Navigate to="/"/>}/></Routes></Shell>}
-createRoot(document.getElementById('root')).render(<BrowserRouter><App/></BrowserRouter>);
+function AppLayout({ children }) {
+  return (
+    <>
+      <Navbar />
+      <main>{children}</main>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppLayout>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/problems" element={<ProblemsCatalog />} />
+            <Route path="/problems/:slug" element={<ProblemWorkspace />} />
+            <Route path="/contests" element={<Contests />} />
+            <Route path="/contests/:id" element={<ContestDetail />} />
+            <Route path="/contests/:id/standings" element={<ContestStandings />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/discuss" element={<Discuss />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/u/:username" element={<Profile />} />
+            <Route path="/login" element={<Auth register={false} />} />
+            <Route path="/register" element={<Auth register={true} />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppLayout>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
+}
