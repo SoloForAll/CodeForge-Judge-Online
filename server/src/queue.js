@@ -137,13 +137,14 @@ export class JudgeQueue extends EventEmitter {
         this.emitEvent(id, 'progress', progressState);
       });
 
-      // Update database with final verdict
+      // Update database with final verdict and memory
       try {
         await pool.execute(
-          'UPDATE submissions SET status = "completed", verdict = ?, runtime_ms = ?, passed_test_cases = ?, total_test_cases = ?, error_detail = ? WHERE id = ?',
+          'UPDATE submissions SET status = "completed", verdict = ?, runtime_ms = ?, memory_mb = ?, passed_test_cases = ?, total_test_cases = ?, error_detail = ? WHERE id = ?',
           [
             result.verdict,
             result.runtimeMs || 0,
+            result.memoryMb ? Math.round(result.memoryMb) : null,
             result.passedTests || 0,
             result.totalTests || tests.length,
             result.detail || null,
@@ -173,11 +174,14 @@ export class JudgeQueue extends EventEmitter {
         status: 'completed',
         verdict: result.verdict,
         runtimeMs: result.runtimeMs,
+        memoryMb: result.memoryMb,
         passedTests: result.passedTests,
         totalTests: result.totalTests || tests.length,
+        testResults: result.testResults || [],
         detail: result.detail || null,
         message: result.detail || `Judged against ${tests.length} test case(s).`
       };
+
 
       this.activeJobs.set(id, completedState);
       this.emitEvent(id, 'completed', completedState);

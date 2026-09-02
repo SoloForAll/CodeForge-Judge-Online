@@ -115,6 +115,12 @@ export function CodeEditor({
     }
   };
 
+  const handleFormatCode = () => {
+    if (editorRef.current) {
+      editorRef.current.getAction('editor.action.formatDocument')?.run();
+    }
+  };
+
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
 
@@ -126,6 +132,11 @@ export function CodeEditor({
     // Add Ctrl+Shift+Enter shortcut for Submit
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => {
       onSubmit?.();
+    });
+
+    // Add Alt+Shift+F for Format Document
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, () => {
+      handleFormatCode();
     });
   };
 
@@ -148,14 +159,22 @@ export function CodeEditor({
 
         <div className="editor-top-actions">
           <button
+            className="linkbutton format-btn"
+            title="Auto-format code (Shift+Alt+F)"
+            onClick={handleFormatCode}
+          >
+            <Sparkles size={13} /> Format
+          </button>
+          <button
             className="linkbutton reset-btn"
             title="Reset code to default template"
             onClick={handleReset}
           >
-            <RotateCcw size={14} /> Reset
+            <RotateCcw size={13} /> Reset
           </button>
         </div>
       </div>
+
 
       <div className="monaco-wrapper">
         <Editor

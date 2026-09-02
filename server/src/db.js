@@ -57,6 +57,10 @@ export async function initDatabase() {
     if (!subColNames.includes('contest_id')) {
       await pool.query("ALTER TABLE submissions ADD COLUMN contest_id INT UNSIGNED NULL");
     }
+    if (!subColNames.includes('memory_mb')) {
+      await pool.query("ALTER TABLE submissions ADD COLUMN memory_mb INT UNSIGNED NULL");
+    }
+
 
     // 4. Ensure contest_problems table exists
     await pool.query(`

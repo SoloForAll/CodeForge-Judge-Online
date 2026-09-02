@@ -458,12 +458,39 @@ nav a:hover { color: var(--accent); }
 .text-danger { color: var(--danger); }
 .text-pending { color: var(--accent); }
 .text-warning { color: var(--warning); }
-.runtime-pill { display: inline-flex; align-items: center; gap: 5px; background: #292929; padding: 4px 10px; border-radius: 12px; font: 12px 'DM Mono'; color: #bbb; }
-.verdict-message { margin: 8px 0 12px; font-size: 13px; color: #ccc; }
+.verdict-metrics { display: flex; align-items: center; gap: 8px; }
+.runtime-pill { display: inline-flex; align-items: center; gap: 5px; background: #292929; padding: 4px 10px; border-radius: 12px; font: 12px 'DM Mono'; color: #bbb; border: 1px solid #383838; }
+.memory-pill { display: inline-flex; align-items: center; gap: 5px; background: #222c26; padding: 4px 10px; border-radius: 12px; font: 12px 'DM Mono'; color: #6ee7b7; border: 1px solid #1b4b32; }
 
-.test-progress-bar { width: 100%; height: 22px; background: #282828; border-radius: 6px; position: relative; overflow: hidden; margin-top: 8px; }
+.verdict-message { margin: 8px 0 10px; font-size: 13px; color: #ccc; }
+
+/* Benchmark Percentile Gauges */
+.benchmark-row { display: flex; align-items: center; gap: 10px; margin: 10px 0 12px; flex-wrap: wrap; }
+.benchmark-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; font-size: 12px; }
+.runtime-badge { background: #2c2515; color: #f59e0b; border: 1px solid #634316; }
+.memory-badge { background: #182b24; color: #34d399; border: 1px solid #16563e; }
+.benchmark-badge b { color: #fff; font-weight: 800; }
+
+.test-progress-bar { width: 100%; height: 20px; background: #282828; border-radius: 6px; position: relative; overflow: hidden; margin-top: 8px; }
 .bar-fill { height: 100%; background: #2c6e3b; transition: width 0.3s ease; }
 .bar-label { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+/* Testcase Diagnostic Matrix */
+.testcase-matrix-wrap { margin-top: 14px; }
+.matrix-title { display: block; font-size: 11px; color: var(--muted); margin-bottom: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.testcase-matrix-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.matrix-card { background: #151515; border: 1px solid #303030; border-radius: 6px; padding: 8px 10px; }
+.matrix-card.pass { border-left: 3px solid #22c55e; }
+.matrix-card.fail { border-left: 3px solid #ef4444; }
+.matrix-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.matrix-index { font-size: 12px; font-weight: 700; color: #ddd; }
+.matrix-tag { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }
+.tag-pass { background: #143522; color: #4ade80; }
+.tag-fail { background: #3b1414; color: #f87171; }
+.matrix-stats { display: flex; justify-content: space-between; font: 11px 'DM Mono'; color: #999; }
+
+.format-btn { color: #caa465; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+.format-btn:hover { color: #f0c57c; }
 
 .custom-result-output pre, .detail-logs pre { background: #121212; padding: 10px; border-radius: 6px; font: 12px 'DM Mono'; max-height: 120px; overflow-y: auto; margin-top: 4px; white-space: pre-wrap; }
 .detail-logs b { font-size: 12px; color: var(--muted); }
@@ -472,6 +499,7 @@ nav a:hover { color: var(--accent); }
 .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .mini-table th { text-align: left; padding: 6px 10px; color: var(--muted); border-bottom: 1px solid var(--line); font-size: 11px; text-transform: uppercase; }
 .mini-table td { padding: 8px 10px; border-bottom: 1px solid #282828; }
+
 
 /* Action Footer Row */
 .submit-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 10px 20px; background: #1c1c1c; border-top: 1px solid var(--line); }
