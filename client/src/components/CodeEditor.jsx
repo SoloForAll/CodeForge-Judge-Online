@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { RotateCcw, Play, Send } from 'lucide-react';
+import { RotateCcw, Play, Send, Sparkles } from 'lucide-react';
+
 
 export const STARTER_TEMPLATES = {
   JavaScript: `const fs = require('fs');
