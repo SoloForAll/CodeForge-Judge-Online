@@ -146,14 +146,17 @@ nav a:hover { color: var(--accent); }
 .split-pane-left {
   height: 100%;
   overflow-y: auto;
+  box-sizing: border-box;
+  flex-shrink: 0;
   min-width: 260px;
 }
 .split-pane-right {
   height: 100%;
   overflow: hidden;
-  min-width: 320px;
   display: flex;
   flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
 }
 .split-gutter-h {
   width: 8px;
@@ -166,6 +169,7 @@ nav a:hover { color: var(--accent); }
   transition: background 0.15s;
   user-select: none;
   z-index: 10;
+  flex-shrink: 0;
 }
 .split-gutter-h:hover, .split-container-h.is-resizing .split-gutter-h {
   background: #2b2518;
@@ -189,6 +193,7 @@ nav a:hover { color: var(--accent); }
   height: 100%;
   width: 100%;
   overflow: hidden;
+  min-width: 0;
 }
 .split-container-v {
   display: flex;
@@ -196,18 +201,24 @@ nav a:hover { color: var(--accent); }
   width: 100%;
   height: 100%;
   overflow: hidden;
+  min-height: 0;
 }
 .split-pane-top {
   width: 100%;
   overflow: hidden;
-  min-height: 200px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
 }
 .split-pane-bottom {
   width: 100%;
   overflow: hidden;
-  min-height: 160px;
   display: flex;
   flex-direction: column;
+  flex-grow: 1;
+  min-height: 0;
 }
 .split-gutter-v {
   height: 8px;
@@ -222,6 +233,7 @@ nav a:hover { color: var(--accent); }
   z-index: 10;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
 }
 .split-gutter-v:hover, .split-container-v.is-resizing .split-gutter-v {
   background: #2b2518;
@@ -237,6 +249,7 @@ nav a:hover { color: var(--accent); }
   background: var(--accent);
   width: 38px;
 }
+
 
 .statement {
   height: 100%;

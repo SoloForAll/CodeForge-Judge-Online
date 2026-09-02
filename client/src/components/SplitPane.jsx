@@ -12,7 +12,11 @@ export function SplitPaneHorizontal({
   const [ratio, setRatio] = useState(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      return saved ? Number(saved) : initialRatio;
+      const num = Number(saved);
+      if (saved && !isNaN(num) && num >= minRatio && num <= maxRatio) {
+        return num;
+      }
+      return initialRatio;
     } catch {
       return initialRatio;
     }
@@ -31,8 +35,8 @@ export function SplitPaneHorizontal({
   }, []);
 
   const handleDoubleClick = () => {
-    setRatio(50);
-    localStorage.setItem(storageKey, '50');
+    setRatio(initialRatio || 45);
+    localStorage.setItem(storageKey, String(initialRatio || 45));
   };
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export function SplitPaneHorizontal({
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const currentX = e.clientX ?? (e.touches && e.touches[0]?.clientX);
-      if (!currentX) return;
+      if (currentX === undefined || currentX === null) return;
 
       const newRatio = ((currentX - rect.left) / rect.width) * 100;
       const clamped = Math.min(Math.max(newRatio, minRatio), maxRatio);
@@ -72,7 +76,7 @@ export function SplitPaneHorizontal({
       ref={containerRef}
       className={`split-container-h ${isDragging ? 'is-resizing' : ''} ${className}`}
     >
-      <div className="split-pane-left" style={{ width: `${ratio}%` }}>
+      <div className="split-pane-left" style={{ flexBasis: `${ratio}%`, width: `${ratio}%` }}>
         {left}
       </div>
 
@@ -81,12 +85,12 @@ export function SplitPaneHorizontal({
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onDoubleClick={handleDoubleClick}
-        title="Drag to resize pane (Double-click to reset 50/50)"
+        title="Drag to resize pane (Double-click to reset)"
       >
         <div className="gutter-handle-h" />
       </div>
 
-      <div className="split-pane-right" style={{ width: `${100 - ratio}%` }}>
+      <div className="split-pane-right" style={{ flexBasis: `${100 - ratio}%`, width: `${100 - ratio}%` }}>
         {right}
       </div>
     </div>
@@ -96,8 +100,8 @@ export function SplitPaneHorizontal({
 export function SplitPaneVertical({
   top,
   bottom,
-  initialRatio = 60,
-  minRatio = 20,
+  initialRatio = 58,
+  minRatio = 25,
   maxRatio = 80,
   storageKey = 'codeforge_v_ratio',
   className = ''
@@ -105,7 +109,11 @@ export function SplitPaneVertical({
   const [ratio, setRatio] = useState(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      return saved ? Number(saved) : initialRatio;
+      const num = Number(saved);
+      if (saved && !isNaN(num) && num >= minRatio && num <= maxRatio) {
+        return num;
+      }
+      return initialRatio;
     } catch {
       return initialRatio;
     }
@@ -124,8 +132,8 @@ export function SplitPaneVertical({
   }, []);
 
   const handleDoubleClick = () => {
-    setRatio(60);
-    localStorage.setItem(storageKey, '60');
+    setRatio(initialRatio || 58);
+    localStorage.setItem(storageKey, String(initialRatio || 58));
   };
 
   useEffect(() => {
@@ -135,7 +143,7 @@ export function SplitPaneVertical({
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const currentY = e.clientY ?? (e.touches && e.touches[0]?.clientY);
-      if (!currentY) return;
+      if (currentY === undefined || currentY === null) return;
 
       const newRatio = ((currentY - rect.top) / rect.height) * 100;
       const clamped = Math.min(Math.max(newRatio, minRatio), maxRatio);
@@ -165,7 +173,7 @@ export function SplitPaneVertical({
       ref={containerRef}
       className={`split-container-v ${isDragging ? 'is-resizing' : ''} ${className}`}
     >
-      <div className="split-pane-top" style={{ height: `${ratio}%` }}>
+      <div className="split-pane-top" style={{ flexBasis: `${ratio}%`, height: `${ratio}%` }}>
         {top}
       </div>
 
@@ -179,7 +187,7 @@ export function SplitPaneVertical({
         <div className="gutter-handle-v" />
       </div>
 
-      <div className="split-pane-bottom" style={{ height: `${100 - ratio}%` }}>
+      <div className="split-pane-bottom" style={{ flexBasis: `${100 - ratio}%`, height: `${100 - ratio}%` }}>
         {bottom}
       </div>
     </div>
