@@ -1,11 +1,18 @@
-import React from 'react';
-import { Play, Send, CheckCircle2, XCircle, Clock3, AlertTriangle, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { Play, Send, CheckCircle2, XCircle, Clock3, AlertTriangle, RefreshCw, Plus, Trash2, Sparkles } from 'lucide-react';
+import { DiffViewer } from './DiffViewer';
 
 export function TestcasePanel({
   activeTab,
   setActiveTab,
   customInput,
   setCustomInput,
+  testCases = [],
+  setTestCases,
+  currentCaseIdx = 0,
+  setCurrentCaseIdx,
+  sampleInputs = [],
+  expectedOutput = '',
   judgeState,
   history,
   onRunCode,
@@ -16,42 +23,126 @@ export function TestcasePanel({
   const isWarning = judgeState.verdict === 'Time Limit Exceeded' || judgeState.verdict === 'Output Limit Exceeded';
   const isPending = judgeState.status === 'queued' || judgeState.status === 'processing' || judgeState.status === 'running_custom';
 
+  const handleAddCase = () => {
+    if (setTestCases) {
+      const newCases = [...testCases, ''];
+      setTestCases(newCases);
+      if (setCurrentCaseIdx) setCurrentCaseIdx(newCases.length - 1);
+    }
+  };
+
+  const handleRemoveCase = (idx, e) => {
+    e.stopPropagation();
+    if (setTestCases && testCases.length > 1) {
+      const newCases = testCases.filter((_, i) => i !== idx);
+      setTestCases(newCases);
+      if (setCurrentCaseIdx) {
+        setCurrentCaseIdx(Math.max(0, currentCaseIdx >= newCases.length ? newCases.length - 1 : currentCaseIdx));
+      }
+    }
+  };
+
+  const handleLoadSamples = () => {
+    if (setTestCases && sampleInputs.length > 0) {
+      setTestCases([...sampleInputs]);
+      if (setCurrentCaseIdx) setCurrentCaseIdx(0);
+    } else if (setCustomInput && sampleInputs.length > 0) {
+      setCustomInput(sampleInputs[0]);
+    }
+  };
+
+  const currentInputValue = testCases && testCases.length > 0 ? testCases[currentCaseIdx] || '' : customInput;
+
+  const handleInputChange = (val) => {
+    if (setTestCases && testCases.length > 0) {
+      const updated = [...testCases];
+      updated[currentCaseIdx] = val;
+      setTestCases(updated);
+    } else if (setCustomInput) {
+      setCustomInput(val);
+    }
+  };
+
   return (
     <div className="testcase-panel-wrap">
-      {/* Tab Header */}
+      {/* Top Workspace Tab Strip */}
       <div className="workspace-tabs">
-        <button
-          className={`tab-btn ${activeTab === 'testcase' ? 'active' : ''}`}
-          onClick={() => setActiveTab('testcase')}
-        >
-          Custom Testcase
-        </button>
+        <div className="tabs-left">
+          <button
+            className={`tab-btn ${activeTab === 'testcase' ? 'active' : ''}`}
+            onClick={() => setActiveTab('testcase')}
+          >
+            Custom Testcase
+          </button>
 
-        <button
-          className={`tab-btn ${activeTab === 'results' ? 'active' : ''}`}
-          onClick={() => setActiveTab('results')}
-        >
-          Test Results
-          {isPending && <span className="tab-spinner" />}
-        </button>
+          <button
+            className={`tab-btn ${activeTab === 'results' ? 'active' : ''}`}
+            onClick={() => setActiveTab('results')}
+          >
+            Test Results
+            {isPending && <span className="tab-spinner" />}
+          </button>
 
-        <button
-          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          Submissions
-        </button>
+          <button
+            className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+          >
+            Submissions
+          </button>
+        </div>
+
+        {activeTab === 'testcase' && sampleInputs.length > 0 && (
+          <button
+            className="linkbutton load-samples-btn"
+            onClick={handleLoadSamples}
+            title="Load all problem example inputs into test tabs"
+          >
+            <Sparkles size={13} /> Load Sample Cases
+          </button>
+        )}
       </div>
 
-      {/* Tab Body */}
+      {/* Tab Body Content */}
       <div className="tab-content">
         {activeTab === 'testcase' && (
           <div className="custom-input-box">
-            <label>Standard Input:</label>
+            {/* Multi-Case Tab Bar */}
+            {testCases && testCases.length > 0 && (
+              <div className="testcase-pill-bar">
+                {testCases.map((_, idx) => (
+                  <button
+                    key={idx}
+                    className={`case-pill ${currentCaseIdx === idx ? 'active-case' : ''}`}
+                    onClick={() => setCurrentCaseIdx && setCurrentCaseIdx(idx)}
+                  >
+                    <span>Case {idx + 1}</span>
+                    {testCases.length > 1 && (
+                      <span
+                        className="remove-case-icon"
+                        onClick={(e) => handleRemoveCase(idx, e)}
+                        title="Remove Case"
+                      >
+                        ×
+                      </span>
+                    )}
+                  </button>
+                ))}
+
+                <button
+                  className="add-case-pill"
+                  onClick={handleAddCase}
+                  title="Add another test case"
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
+            )}
+
+            <label>Standard Input (stdin):</label>
             <textarea
-              placeholder="Enter custom input to test your code..."
-              value={customInput}
-              onChange={(e) => setCustomInput(e.target.value)}
+              placeholder="Enter custom input parameters..."
+              value={currentInputValue}
+              onChange={(e) => handleInputChange(e.target.value)}
             />
           </div>
         )}
@@ -60,7 +151,7 @@ export function TestcasePanel({
           <div className="results-box">
             {judgeState.status === 'idle' ? (
               <p className="muted">
-                Run your solution against custom input with <b>Run Code</b> or test against hidden judge test cases with <b>Submit Solution</b>.
+                Run your solution against custom input with <b>Run Code</b> or evaluate against hidden judge test cases with <b>Submit Solution</b>.
               </p>
             ) : (
               <div className="verdict-card">
@@ -102,7 +193,16 @@ export function TestcasePanel({
                   </div>
                 )}
 
-                {judgeState.customResult && (
+                {/* Diff Viewer for Wrong Answer / Custom Runs with Expected Output */}
+                {expectedOutput && judgeState.customResult?.stdout && (
+                  <DiffViewer
+                    expected={expectedOutput}
+                    actual={judgeState.customResult.stdout}
+                  />
+                )}
+
+                {/* Standard Output and Error Logs */}
+                {judgeState.customResult && !expectedOutput && (
                   <div className="custom-result-output">
                     {judgeState.customResult.stdout && (
                       <div>
@@ -194,4 +294,3 @@ export function TestcasePanel({
     </div>
   );
 }
-

@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Copy, Check, Sparkles } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { CodeEditor, STARTER_TEMPLATES } from '../components/CodeEditor';
 import { TestcasePanel } from '../components/TestcasePanel';
+import { SplitPaneHorizontal, SplitPaneVertical } from '../components/SplitPane';
 
 const difficultyClass = (d) => (d ? d.toLowerCase() : 'easy');
 
@@ -15,6 +17,11 @@ export function ProblemWorkspace() {
   const [language, setLanguage] = useState('JavaScript');
   const [code, setCode] = useState(STARTER_TEMPLATES['JavaScript']);
   const [customInput, setCustomInput] = useState('');
+  const [testCases, setTestCases] = useState(['']);
+  const [currentCaseIdx, setCurrentCaseIdx] = useState(0);
+  const [copiedInput, setCopiedInput] = useState(false);
+  const [copiedOutput, setCopiedOutput] = useState(false);
+
   const [activeTab, setActiveTab] = useState('testcase'); // 'testcase' | 'results' | 'history'
   const [history, setHistory] = useState([]);
   const [judgeState, setJudgeState] = useState({
@@ -37,6 +44,14 @@ export function ProblemWorkspace() {
       setProblem(r.data);
       if (r.data.example_input) {
         setCustomInput(r.data.example_input);
+        const samples = [];
+        if (r.data.samples && r.data.samples.length > 0) {
+          r.data.samples.forEach(s => samples.push(s.input_data));
+        } else {
+          samples.push(r.data.example_input);
+        }
+        setTestCases(samples);
+        setCurrentCaseIdx(0);
       }
     }).catch(() => {});
   }, [slug]);
@@ -57,8 +72,21 @@ export function ProblemWorkspace() {
     setLanguage(newLang);
   };
 
-  // Run Code against Custom Input
+  const handleCopyExample = (text, isInput) => {
+    navigator.clipboard.writeText(text || '');
+    if (isInput) {
+      setCopiedInput(true);
+      setTimeout(() => setCopiedInput(false), 2000);
+    } else {
+      setCopiedOutput(true);
+      setTimeout(() => setCopiedOutput(false), 2000);
+    }
+  };
+
+  // Run Code against Active Testcase Input
   const handleRunCode = async () => {
+    const activeInput = testCases && testCases.length > 0 ? testCases[currentCaseIdx] : customInput;
+
     setActiveTab('results');
     setJudgeState({
       status: 'running_custom',
@@ -72,17 +100,32 @@ export function ProblemWorkspace() {
       const { data } = await api.post('/judge/run', {
         language,
         sourceCode: code,
-        customInput
+        customInput: activeInput
       });
+
+      const expOutput = problem?.example_output?.trim();
+      const actualOutput = data.stdout ? data.stdout.trim() : '';
+      const isCorrect = expOutput ? actualOutput === expOutput : data.code === 0;
+
+      let verdictText = 'Success';
+      if (data.timedOut) {
+        verdictText = 'Time Limit Exceeded';
+      } else if (data.code !== 0) {
+        verdictText = 'Runtime Error';
+      } else if (expOutput && !isCorrect && currentCaseIdx === 0) {
+        verdictText = 'Wrong Answer';
+      }
 
       setJudgeState({
         status: 'completed',
         message: data.timedOut
           ? 'Time Limit Exceeded (3000 ms)'
+          : verdictText === 'Wrong Answer'
+          ? 'Output differs from example output'
           : data.code === 0
           ? 'Run Finished Successfully'
           : 'Program Exited With Error',
-        verdict: data.timedOut ? 'Time Limit Exceeded' : data.code === 0 ? 'Success' : 'Error',
+        verdict: verdictText,
         runtimeMs: data.runtimeMs,
         customResult: data
       });
@@ -95,7 +138,7 @@ export function ProblemWorkspace() {
     }
   };
 
-  // Submit Solution against hidden judge tests with SSE
+  // Submit Solution against hidden judge tests with live SSE
   const handleSubmit = async () => {
     if (!user) {
       setActiveTab('results');
@@ -216,70 +259,127 @@ export function ProblemWorkspace() {
     judgeState.status === 'processing' ||
     judgeState.status === 'running_custom';
 
-  return (
-    <div className="workspace">
-      {/* Left Statement Pane */}
-      <article className="statement">
-        <Link className="back" to="/problems">
-          ← All problems
-        </Link>
-        <div className={`difficulty ${difficultyClass(problem.difficulty)}`}>
-          {problem.difficulty}
-        </div>
-        <h1>{problem.title}</h1>
-        <p className="tags">{problem.tags}</p>
+  const sampleInputs = problem.samples && problem.samples.length > 0
+    ? problem.samples.map(s => s.input_data)
+    : problem.example_input ? [problem.example_input] : [];
+
+  // Left Pane Component (Problem Statement)
+  const statementPane = (
+    <article className="statement">
+      <Link className="back" to="/problems">
+        ← All problems
+      </Link>
+      <div className={`difficulty ${difficultyClass(problem.difficulty)}`}>
+        {problem.difficulty}
+      </div>
+      <h1>{problem.title}</h1>
+      <p className="tags">{problem.tags}</p>
+      <div className="statement-body">
         <p>{problem.description}</p>
 
         {problem.input_format && (
-          <>
+          <div className="format-section">
             <h3>Input format</h3>
             <p>{problem.input_format}</p>
-          </>
+          </div>
         )}
 
         {problem.output_format && (
-          <>
+          <div className="format-section">
             <h3>Output format</h3>
             <p>{problem.output_format}</p>
-          </>
+          </div>
         )}
 
         {problem.example_input && (
           <div className="example">
-            <b>Example input</b>
+            <div className="example-block-header">
+              <b>Example input</b>
+              <button
+                className="example-copy-btn"
+                onClick={() => handleCopyExample(problem.example_input, true)}
+                title="Copy Example Input"
+              >
+                {copiedInput ? <Check size={13} /> : <Copy size={13} />}
+                {copiedInput ? 'Copied' : 'Copy'}
+              </button>
+            </div>
             <pre>{problem.example_input}</pre>
-            <b>Example output</b>
+
+            <div className="example-block-header" style={{ marginTop: '14px' }}>
+              <b>Example output</b>
+              <button
+                className="example-copy-btn"
+                onClick={() => handleCopyExample(problem.example_output, false)}
+                title="Copy Example Output"
+              >
+                {copiedOutput ? <Check size={13} /> : <Copy size={13} />}
+                {copiedOutput ? 'Copied' : 'Copy'}
+              </button>
+            </div>
             <pre>{problem.example_output}</pre>
           </div>
         )}
-      </article>
+      </div>
+    </article>
+  );
 
-      {/* Right Monaco Editor + Testcase/Results Pane */}
-      <aside className="editor-pane">
-        <CodeEditor
-          problemSlug={problem.slug}
-          language={language}
-          onLanguageChange={handleLanguageChange}
-          code={code}
-          onChange={setCode}
-          onRunCode={handleRunCode}
-          onSubmit={handleSubmit}
-          isPending={isPending}
-        />
+  // Top Editor Pane Component
+  const topEditorPane = (
+    <CodeEditor
+      problemSlug={problem.slug}
+      language={language}
+      onLanguageChange={handleLanguageChange}
+      code={code}
+      onChange={setCode}
+      onRunCode={handleRunCode}
+      onSubmit={handleSubmit}
+      isPending={isPending}
+    />
+  );
 
-        <TestcasePanel
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          customInput={customInput}
-          setCustomInput={setCustomInput}
-          judgeState={judgeState}
-          history={history}
-          onRunCode={handleRunCode}
-          onSubmit={handleSubmit}
-          isLoggedIn={Boolean(user)}
-        />
-      </aside>
+  // Bottom Testcase / Results Pane Component
+  const bottomTestPane = (
+    <TestcasePanel
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      customInput={customInput}
+      setCustomInput={setCustomInput}
+      testCases={testCases}
+      setTestCases={setTestCases}
+      currentCaseIdx={currentCaseIdx}
+      setCurrentCaseIdx={setCurrentCaseIdx}
+      sampleInputs={sampleInputs}
+      expectedOutput={currentCaseIdx === 0 ? problem.example_output : ''}
+      judgeState={judgeState}
+      history={history}
+      onRunCode={handleRunCode}
+      onSubmit={handleSubmit}
+      isLoggedIn={Boolean(user)}
+    />
+  );
+
+  return (
+    <div className="workspace-resizable">
+      <SplitPaneHorizontal
+        initialRatio={45}
+        minRatio={25}
+        maxRatio={75}
+        storageKey="codeforge_workspace_hratio"
+        left={statementPane}
+        right={
+          <div className="editor-pane-vertical-wrap">
+            <SplitPaneVertical
+              initialRatio={58}
+              minRatio={25}
+              maxRatio={80}
+              storageKey="codeforge_workspace_vratio"
+              top={topEditorPane}
+              bottom={bottomTestPane}
+            />
+          </div>
+        }
+      />
     </div>
   );
 }
-
