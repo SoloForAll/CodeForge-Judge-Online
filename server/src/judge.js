@@ -1,15 +1,15 @@
-﻿// Code execution via Piston API (https://github.com/engineer-man/piston)
-// No Docker required — runs fully in the cloud on Railway.
+﻿// Code execution via Wandbox API (https://wandbox.org)
+// Free, no authentication required. Stable since 2013.
 
-const PISTON_URL = 'https://emkc.org/api/v2/piston/execute';
-const TIME_LIMIT_MS = 5000;
+const WANDBOX_URL = 'https://wandbox.org/api/compile.json';
+const TIME_LIMIT_MS = 10000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
 
 const LANGUAGES = {
-  JavaScript: { pistonLang: 'javascript', pistonVersion: '*', file: 'solution.js',  baseMemory: 32.4 },
-  Python:     { pistonLang: 'python',     pistonVersion: '*', file: 'solution.py',  baseMemory: 15.6 },
-  'C++':      { pistonLang: 'c++',        pistonVersion: '*', file: 'solution.cpp', compile: true, baseMemory: 4.2  },
-  Java:       { pistonLang: 'java',       pistonVersion: '*', file: 'Main.java',    compile: true, baseMemory: 46.8 }
+  JavaScript: { compiler: 'nodejs-20.11.0', file: 'solution.js',  baseMemory: 32.4 },
+  Python:     { compiler: 'cpython-3.12.3',  file: 'solution.py',  baseMemory: 15.6 },
+  'C++':      { compiler: 'gcc-head',         file: 'solution.cpp', compile: true, options: 'warning,gnu++17,cpp-verbose,-O2,-lm', baseMemory: 4.2 },
+  Java:       { compiler: 'openjdk-head',     file: 'Main.java',    compile: true, baseMemory: 46.8 }
 };
 
 export const supportedLanguages = Object.keys(LANGUAGES);
@@ -25,48 +25,60 @@ function estimateMemory(language, outputBytes = 0, runtimeMs = 0) {
 }
 
 /**
- * Calls the Piston API to execute code.
+ * Calls the Wandbox API to compile and run code.
  * Returns: { stdout, stderr, code, timedOut, outputExceeded, compileFailed }
  */
-async function runPiston(config, sourceCode, input) {
-  const response = await fetch(PISTON_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      language: config.pistonLang,
-      version: config.pistonVersion,
-      files: [{ name: config.file, content: sourceCode }],
-      stdin: input || '',
-      compile_timeout: 10000,
-      run_timeout: TIME_LIMIT_MS,
-      compile_memory_limit: -1,
-      run_memory_limit: -1
-    })
-  });
+async function runWandbox(config, sourceCode, input) {
+  const body = {
+    compiler: config.compiler,
+    code: sourceCode,
+    stdin: input || ''
+  };
+  if (config.options) body.options = config.options;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIME_LIMIT_MS + 5000);
+
+  let response;
+  try {
+    response = await fetch(WANDBOX_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') {
+      return { stdout: '', stderr: '', code: 1, timedOut: true, outputExceeded: false, compileFailed: false };
+    }
+    throw new Error(`Wandbox API unreachable: ${err.message}`);
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!response.ok) {
-    throw new Error(`Piston API returned HTTP ${response.status}: ${await response.text()}`);
+    throw new Error(`Wandbox API returned HTTP ${response.status}: ${await response.text()}`);
   }
 
   const data = await response.json();
 
-  // Compiled languages (C++, Java) — check for compilation errors first
-  if (data.compile && data.compile.code !== 0) {
+  // Compile error (C++, Java)
+  if (config.compile && data.compiler_error && data.compiler_error.trim()) {
     return {
       stdout: '',
-      stderr: (data.compile.stderr || data.compile.output || 'Compilation failed.').trim().slice(0, 500),
-      code: data.compile.code,
+      stderr: data.compiler_error.trim().slice(0, 500),
+      code: 1,
       timedOut: false,
       outputExceeded: false,
       compileFailed: true
     };
   }
 
-  const run = data.run || {};
-  const stdout = run.stdout || '';
-  const stderr = (run.stderr || '').trim();
-  const code = run.code ?? 0;
-  const timedOut = run.signal === 'SIGKILL' || String(run.output || '').toLowerCase().includes('timed out');
+  const stdout = data.program_output || '';
+  const stderr = (data.program_error || '').trim();
+  const code = parseInt(data.status, 10) || 0;
+  const timedOut = String(data.signal || '').includes('Killed') || String(data.program_message || '').toLowerCase().includes('timeout');
   const outputExceeded = Buffer.byteLength(stdout) > MAX_OUTPUT_BYTES;
 
   return { stdout, stderr, code, timedOut, outputExceeded, compileFailed: false };
@@ -106,7 +118,7 @@ export async function judgeSubmission(language, sourceCode, tests, onProgress) {
     }
 
     const caseStarted = performance.now();
-    const result = await runPiston(config, sourceCode, test.input_data);
+    const result = await runWandbox(config, sourceCode, test.input_data);
     const caseRuntimeMs = Math.round(performance.now() - caseStarted);
     const caseMemoryMb = estimateMemory(language, Buffer.byteLength(result.stdout || ''), caseRuntimeMs);
     if (caseMemoryMb > peakMemory) peakMemory = caseMemoryMb;
@@ -161,7 +173,7 @@ export async function runCustomCode(language, sourceCode, customInput) {
   }
 
   const started = performance.now();
-  const result = await runPiston(config, sourceCode, customInput || '');
+  const result = await runWandbox(config, sourceCode, customInput || '');
   const runtimeMs = Math.round(performance.now() - started);
   const memoryMb = estimateMemory(language, Buffer.byteLength(result.stdout || ''), runtimeMs);
 
