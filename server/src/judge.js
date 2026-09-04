@@ -6,10 +6,10 @@ const TIME_LIMIT_MS = 10000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
 
 const LANGUAGES = {
-  JavaScript: { compiler: 'nodejs-20.11.0', file: 'solution.js',  baseMemory: 32.4 },
-  Python:     { compiler: 'cpython-3.12.3',  file: 'solution.py',  baseMemory: 15.6 },
+  JavaScript: { compiler: 'nodejs-20.17.0', file: 'solution.js',  baseMemory: 32.4 },
+  Python:     { compiler: 'cpython-3.12.7',  file: 'solution.py',  baseMemory: 15.6 },
   'C++':      { compiler: 'gcc-head',         file: 'solution.cpp', compile: true, options: 'warning,gnu++17,cpp-verbose,-O2,-lm', baseMemory: 4.2 },
-  Java:       { compiler: 'openjdk-head',     file: 'Main.java',    compile: true, baseMemory: 46.8 }
+  Java:       { compiler: 'openjdk-jdk-22+36',     file: 'Main.java',    compile: true, baseMemory: 46.8 }
 };
 
 export const supportedLanguages = Object.keys(LANGUAGES);
