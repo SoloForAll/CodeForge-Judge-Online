@@ -9,9 +9,13 @@ import { runCustomCode, supportedLanguages } from './judge.js';
 import { judgeQueue } from './queue.js';
 dotenv.config();
 
-const app = express();
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+const clientOrigin = process.env.CLIENT_URL;
+app.use(cors({
+  origin: clientOrigin ? [clientOrigin, 'http://localhost:5173'] : true,
+  credentials: true
+}));
 app.use(express.json());
+
 const tokenFor = (user) => jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'development_secret', { expiresIn: '2h' });
 
 // Auto-migrate schema on server startup
