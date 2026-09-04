@@ -7,7 +7,6 @@
 [![MySQL](https://img.shields.io/badge/Database-MySQL%208.0-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Docker](https://img.shields.io/badge/Sandbox-Docker%20Containers-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Monaco Editor](https://img.shields.io/badge/Editor-VS%20Code%20Monaco-007ACC?logo=visualstudiocode&logoColor=white)](https://microsoft.github.io/monaco-editor/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An enterprise-grade, full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, hardened **Docker Sandboxes**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
 
@@ -269,6 +268,3 @@ CodeForge/
 ```
 
 ---
-
-## 📄 License
-This project is licensed under the [MIT License](LICENSE).
