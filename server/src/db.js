@@ -9,8 +9,11 @@ export const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'codeforge',
   waitForConnections: true,
-  connectionLimit: 10
+  connectionLimit: 10,
+  connectTimeout: 10000,
+  enableKeepAlive: true
 });
+
 
 export async function initDatabase() {
   try {

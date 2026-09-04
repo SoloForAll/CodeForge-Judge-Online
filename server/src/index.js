@@ -673,8 +673,16 @@ app.post('/api/discuss/:id/like', async (req, res) => {
   }
 });
 
+process.on('uncaughtException', (err) => {
+  console.error('[Process] Uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Process] Unhandled rejection at:', promise, 'reason:', reason);
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`CodeForge API running on http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`CodeForge API running on port ${PORT}`));
+
 
 
 
