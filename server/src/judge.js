@@ -1,23 +1,22 @@
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { spawn, spawnSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+﻿// Code execution via Piston API (https://github.com/engineer-man/piston)
+// No Docker required — runs fully in the cloud on Railway.
 
-const TIME_LIMIT_MS = 3000;
+const PISTON_URL = 'https://emkc.org/api/v2/piston/execute';
+const TIME_LIMIT_MS = 5000;
 const MAX_OUTPUT_BYTES = 64 * 1024;
 
 const LANGUAGES = {
-  JavaScript: { image: 'node:20-alpine', file: 'solution.js', command: ['node', '/submission/solution.js'], baseMemory: 32.4 },
-  Python: { image: 'python:3.12-alpine', file: 'solution.py', command: ['python3', '/submission/solution.py'], baseMemory: 15.6 },
-  'C++': { image: 'gcc:14', file: 'solution.cpp', command: ['sh', '-c', 'cp /submission/solution.cpp /work/solution.cpp && g++ -std=c++17 -O2 -pipe /work/solution.cpp -o /work/solution && /work/solution'], compile: true, timeLimitMs: 10000, baseMemory: 4.2 },
-  Java: { image: 'eclipse-temurin:21-jdk-alpine', file: 'Main.java', command: ['sh', '-c', 'cp /submission/Main.java /work/Main.java && javac -d /work /work/Main.java && java -cp /work Main'], compile: true, timeLimitMs: 10000, baseMemory: 46.8 }
+  JavaScript: { pistonLang: 'javascript', pistonVersion: '*', file: 'solution.js',  baseMemory: 32.4 },
+  Python:     { pistonLang: 'python',     pistonVersion: '*', file: 'solution.py',  baseMemory: 15.6 },
+  'C++':      { pistonLang: 'c++',        pistonVersion: '*', file: 'solution.cpp', compile: true, baseMemory: 4.2  },
+  Java:       { pistonLang: 'java',       pistonVersion: '*', file: 'Main.java',    compile: true, baseMemory: 46.8 }
 };
 
 export const supportedLanguages = Object.keys(LANGUAGES);
-function normalize(value) { return String(value || '').trim().replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n'); }
-function dockerAvailable() { return spawnSync('docker', ['info'], { stdio: 'ignore', timeout: 5000, windowsHide: true }).status === 0; }
-function unavailable(message) { const error = new Error(message); error.code = 'JUDGE_UNAVAILABLE'; return error; }
+
+function normalize(value) {
+  return String(value || '').trim().replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n');
+}
 
 function estimateMemory(language, outputBytes = 0, runtimeMs = 0) {
   const base = LANGUAGES[language]?.baseMemory || 20.0;
@@ -25,197 +24,154 @@ function estimateMemory(language, outputBytes = 0, runtimeMs = 0) {
   return Number((base + variance).toFixed(1));
 }
 
-function runContainer(folder, configuration, input) {
-  return new Promise((resolve, reject) => {
-    const name = `codeforge-judge-${randomUUID()}`;
-    const args = ['run', '--rm', '--name', name, '--network', 'none', '--memory', '256m', '--memory-swap', '256m', '--cpus', '0.5', '--pids-limit', '64', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--tmpfs', '/tmp:rw,noexec,nosuid,size=32m', '--tmpfs', '/work:rw,exec,nosuid,size=32m', '-i', '-v', `${folder}:/submission:ro`, configuration.image, ...configuration.command];
-    const child = spawn('docker', args, { windowsHide: true });
-    let stdout = '', stderr = '', timedOut = false, outputExceeded = false;
-    const stop = () => { spawn('docker', ['kill', name], { windowsHide: true }); child.kill(); };
-    const timer = setTimeout(() => { timedOut = true; stop(); }, configuration.timeLimitMs || TIME_LIMIT_MS);
-    child.stdout.on('data', (chunk) => { stdout += chunk; if (Buffer.byteLength(stdout) > MAX_OUTPUT_BYTES) { outputExceeded = true; stop(); } });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
-    child.on('error', (error) => { clearTimeout(timer); reject(error); });
-    child.on('close', (code) => { clearTimeout(timer); resolve({ code, stdout, stderr, timedOut, outputExceeded }); });
-    child.stdin.end(input || '');
+/**
+ * Calls the Piston API to execute code.
+ * Returns: { stdout, stderr, code, timedOut, outputExceeded, compileFailed }
+ */
+async function runPiston(config, sourceCode, input) {
+  const response = await fetch(PISTON_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      language: config.pistonLang,
+      version: config.pistonVersion,
+      files: [{ name: config.file, content: sourceCode }],
+      stdin: input || '',
+      compile_timeout: 10000,
+      run_timeout: TIME_LIMIT_MS,
+      compile_memory_limit: -1,
+      run_memory_limit: -1
+    })
   });
+
+  if (!response.ok) {
+    throw new Error(`Piston API returned HTTP ${response.status}: ${await response.text()}`);
+  }
+
+  const data = await response.json();
+
+  // Compiled languages (C++, Java) — check for compilation errors first
+  if (data.compile && data.compile.code !== 0) {
+    return {
+      stdout: '',
+      stderr: (data.compile.stderr || data.compile.output || 'Compilation failed.').trim().slice(0, 500),
+      code: data.compile.code,
+      timedOut: false,
+      outputExceeded: false,
+      compileFailed: true
+    };
+  }
+
+  const run = data.run || {};
+  const stdout = run.stdout || '';
+  const stderr = (run.stderr || '').trim();
+  const code = run.code ?? 0;
+  const timedOut = run.signal === 'SIGKILL' || String(run.output || '').toLowerCase().includes('timed out');
+  const outputExceeded = Buffer.byteLength(stdout) > MAX_OUTPUT_BYTES;
+
+  return { stdout, stderr, code, timedOut, outputExceeded, compileFailed: false };
 }
 
 /** Runs a supported language against hidden tests with progress callbacks and deep diagnostic metrics. */
 export async function judgeSubmission(language, sourceCode, tests, onProgress) {
-  const configuration = LANGUAGES[language];
-  if (!configuration) { const error = new Error('Unsupported programming language.'); error.code = 'UNSUPPORTED_LANGUAGE'; throw error; }
-  if (!dockerAvailable()) throw unavailable('Docker Desktop is not running. Start Docker Desktop, then submit again.');
-  const folder = await mkdtemp(join(tmpdir(), 'codeforge-judge-'));
-
-  try {
-    await writeFile(join(folder, configuration.file), sourceCode, 'utf8');
-
-    if (configuration.compile && onProgress) {
-      onProgress({ state: 'compiling', message: `Compiling ${language} code...`, percent: 5 });
-    }
-
-    const overallStarted = performance.now();
-    let passedTests = 0;
-    const testResults = [];
-    let peakMemory = configuration.baseMemory || 20.0;
-
-    for (let i = 0; i < tests.length; i++) {
-      const test = tests[i];
-      const testNum = i + 1;
-      const total = tests.length;
-
-      if (onProgress) {
-        onProgress({
-          state: 'running',
-          message: `Running test case ${testNum} of ${total}...`,
-          testIndex: testNum,
-          totalTests: total,
-          percent: Math.round(((i) / total) * 100)
-        });
-      }
-
-      const caseStarted = performance.now();
-      const result = await runContainer(folder, configuration, test.input_data);
-      const caseRuntimeMs = Math.round(performance.now() - caseStarted);
-      const caseMemoryMb = estimateMemory(language, Buffer.byteLength(result.stdout || ''), caseRuntimeMs);
-      if (caseMemoryMb > peakMemory) peakMemory = caseMemoryMb;
-
-      const totalElapsed = Math.round(performance.now() - overallStarted);
-
-      if (result.timedOut) {
-        testResults.push({
-          testIndex: testNum,
-          status: 'Time Limit Exceeded',
-          runtimeMs: caseRuntimeMs,
-          memoryMb: caseMemoryMb,
-          isSample: Boolean(test.is_sample)
-        });
-        return {
-          verdict: 'Time Limit Exceeded',
-          runtimeMs: totalElapsed,
-          memoryMb: peakMemory,
-          passedTests,
-          totalTests: total,
-          detail: `Time limit exceeded on test case #${testNum}.`,
-          testResults
-        };
-      }
-
-      if (result.outputExceeded) {
-        testResults.push({
-          testIndex: testNum,
-          status: 'Output Limit Exceeded',
-          runtimeMs: caseRuntimeMs,
-          memoryMb: caseMemoryMb,
-          isSample: Boolean(test.is_sample)
-        });
-        return {
-          verdict: 'Output Limit Exceeded',
-          runtimeMs: totalElapsed,
-          memoryMb: peakMemory,
-          passedTests,
-          totalTests: total,
-          detail: `Output limit exceeded on test case #${testNum}.`,
-          testResults
-        };
-      }
-
-      if (result.code !== 0) {
-        const detail = result.stderr.trim().slice(0, 500) || 'The program ended with an error.';
-        const verdictName = configuration.compile ? 'Compilation Error' : 'Runtime Error';
-        testResults.push({
-          testIndex: testNum,
-          status: verdictName,
-          runtimeMs: caseRuntimeMs,
-          memoryMb: caseMemoryMb,
-          isSample: Boolean(test.is_sample)
-        });
-        return {
-          verdict: verdictName,
-          runtimeMs: totalElapsed,
-          memoryMb: peakMemory,
-          passedTests,
-          totalTests: total,
-          detail,
-          testResults
-        };
-      }
-
-      if (normalize(result.stdout) !== normalize(test.expected_output)) {
-        testResults.push({
-          testIndex: testNum,
-          status: 'Wrong Answer',
-          runtimeMs: caseRuntimeMs,
-          memoryMb: caseMemoryMb,
-          isSample: Boolean(test.is_sample)
-        });
-        return {
-          verdict: 'Wrong Answer',
-          runtimeMs: totalElapsed,
-          memoryMb: peakMemory,
-          passedTests,
-          totalTests: total,
-          detail: `Wrong answer on test case #${testNum}.`,
-          testResults
-        };
-      }
-
-      testResults.push({
-        testIndex: testNum,
-        status: 'Passed',
-        runtimeMs: caseRuntimeMs,
-        memoryMb: caseMemoryMb,
-        isSample: Boolean(test.is_sample)
-      });
-      passedTests++;
-    }
-
-    const totalRuntime = Math.round(performance.now() - overallStarted);
-    return {
-      verdict: 'Accepted',
-      runtimeMs: totalRuntime,
-      memoryMb: peakMemory,
-      passedTests,
-      totalTests: tests.length,
-      detail: `All ${tests.length} test case(s) passed.`,
-      testResults
-    };
-  } catch (error) {
-    if (error.code === 'ENOENT') throw unavailable('Docker was not found. Restart VS Code after installing Docker Desktop.');
+  const config = LANGUAGES[language];
+  if (!config) {
+    const error = new Error('Unsupported programming language.');
+    error.code = 'UNSUPPORTED_LANGUAGE';
     throw error;
-  } finally {
-    await rm(folder, { recursive: true, force: true }).catch(() => {});
   }
+
+  if (config.compile && onProgress) {
+    onProgress({ state: 'compiling', message: `Compiling ${language} code...`, percent: 5 });
+  }
+
+  const overallStarted = performance.now();
+  let passedTests = 0;
+  const testResults = [];
+  let peakMemory = config.baseMemory || 20.0;
+
+  for (let i = 0; i < tests.length; i++) {
+    const test = tests[i];
+    const testNum = i + 1;
+    const total = tests.length;
+
+    if (onProgress) {
+      onProgress({
+        state: 'running',
+        message: `Running test case ${testNum} of ${total}...`,
+        testIndex: testNum,
+        totalTests: total,
+        percent: Math.round((i / total) * 100)
+      });
+    }
+
+    const caseStarted = performance.now();
+    const result = await runPiston(config, sourceCode, test.input_data);
+    const caseRuntimeMs = Math.round(performance.now() - caseStarted);
+    const caseMemoryMb = estimateMemory(language, Buffer.byteLength(result.stdout || ''), caseRuntimeMs);
+    if (caseMemoryMb > peakMemory) peakMemory = caseMemoryMb;
+
+    const totalElapsed = Math.round(performance.now() - overallStarted);
+
+    if (result.timedOut) {
+      testResults.push({ testIndex: testNum, status: 'Time Limit Exceeded', runtimeMs: caseRuntimeMs, memoryMb: caseMemoryMb, isSample: Boolean(test.is_sample) });
+      return { verdict: 'Time Limit Exceeded', runtimeMs: totalElapsed, memoryMb: peakMemory, passedTests, totalTests: total, detail: `Time limit exceeded on test case #${testNum}.`, testResults };
+    }
+
+    if (result.outputExceeded) {
+      testResults.push({ testIndex: testNum, status: 'Output Limit Exceeded', runtimeMs: caseRuntimeMs, memoryMb: caseMemoryMb, isSample: Boolean(test.is_sample) });
+      return { verdict: 'Output Limit Exceeded', runtimeMs: totalElapsed, memoryMb: peakMemory, passedTests, totalTests: total, detail: `Output limit exceeded on test case #${testNum}.`, testResults };
+    }
+
+    if (result.compileFailed || result.code !== 0) {
+      const detail = result.stderr || 'The program ended with an error.';
+      const verdictName = result.compileFailed ? 'Compilation Error' : 'Runtime Error';
+      testResults.push({ testIndex: testNum, status: verdictName, runtimeMs: caseRuntimeMs, memoryMb: caseMemoryMb, isSample: Boolean(test.is_sample) });
+      return { verdict: verdictName, runtimeMs: totalElapsed, memoryMb: peakMemory, passedTests, totalTests: total, detail, testResults };
+    }
+
+    if (normalize(result.stdout) !== normalize(test.expected_output)) {
+      testResults.push({ testIndex: testNum, status: 'Wrong Answer', runtimeMs: caseRuntimeMs, memoryMb: caseMemoryMb, isSample: Boolean(test.is_sample) });
+      return { verdict: 'Wrong Answer', runtimeMs: totalElapsed, memoryMb: peakMemory, passedTests, totalTests: total, detail: `Wrong answer on test case #${testNum}.`, testResults };
+    }
+
+    testResults.push({ testIndex: testNum, status: 'Passed', runtimeMs: caseRuntimeMs, memoryMb: caseMemoryMb, isSample: Boolean(test.is_sample) });
+    passedTests++;
+  }
+
+  const totalRuntime = Math.round(performance.now() - overallStarted);
+  return {
+    verdict: 'Accepted',
+    runtimeMs: totalRuntime,
+    memoryMb: peakMemory,
+    passedTests,
+    totalTests: tests.length,
+    detail: `All ${tests.length} test case(s) passed.`,
+    testResults
+  };
 }
 
 /** Runs a code snippet against a single custom input without saving. */
 export async function runCustomCode(language, sourceCode, customInput) {
-  const configuration = LANGUAGES[language];
-  if (!configuration) { const error = new Error('Unsupported programming language.'); error.code = 'UNSUPPORTED_LANGUAGE'; throw error; }
-  if (!dockerAvailable()) throw unavailable('Docker Desktop is not running. Start Docker Desktop, then run again.');
-  const folder = await mkdtemp(join(tmpdir(), 'codeforge-run-'));
-
-  try {
-    await writeFile(join(folder, configuration.file), sourceCode, 'utf8');
-    const started = performance.now();
-    const result = await runContainer(folder, configuration, customInput || '');
-    const runtimeMs = Math.round(performance.now() - started);
-    const memoryMb = estimateMemory(language, Buffer.byteLength(result.stdout || ''), runtimeMs);
-
-    return {
-      stdout: result.stdout,
-      stderr: result.stderr,
-      code: result.code,
-      timedOut: result.timedOut,
-      outputExceeded: result.outputExceeded,
-      runtimeMs,
-      memoryMb
-    };
-  } catch (error) {
-    if (error.code === 'ENOENT') throw unavailable('Docker was not found.');
+  const config = LANGUAGES[language];
+  if (!config) {
+    const error = new Error('Unsupported programming language.');
+    error.code = 'UNSUPPORTED_LANGUAGE';
     throw error;
-  } finally {
-    await rm(folder, { recursive: true, force: true }).catch(() => {});
   }
+
+  const started = performance.now();
+  const result = await runPiston(config, sourceCode, customInput || '');
+  const runtimeMs = Math.round(performance.now() - started);
+  const memoryMb = estimateMemory(language, Buffer.byteLength(result.stdout || ''), runtimeMs);
+
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    code: result.compileFailed ? 1 : result.code,
+    timedOut: result.timedOut,
+    outputExceeded: result.outputExceeded,
+    runtimeMs,
+    memoryMb
+  };
 }
