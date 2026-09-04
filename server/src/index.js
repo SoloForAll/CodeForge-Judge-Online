@@ -14,6 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+const app = express();
 
 const clientOrigin = process.env.CLIENT_URL;
 app.use(cors({
