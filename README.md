@@ -7,8 +7,9 @@
 [![MySQL](https://img.shields.io/badge/Database-MySQL%208.0-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Docker](https://img.shields.io/badge/Sandbox-Docker%20Containers-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Monaco Editor](https://img.shields.io/badge/Editor-VS%20Code%20Monaco-007ACC?logo=visualstudiocode&logoColor=white)](https://microsoft.github.io/monaco-editor/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An enterprise-grade, full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, hardened **Docker Sandboxes**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
+An enterprise-grade, full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, hardened **Docker Sandboxes**, **Draggable Split-Pane Workspaces**, **Peak Memory Profiling (MB)**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
 
 </div>
 
@@ -16,26 +17,36 @@ An enterprise-grade, full-stack **Online Coding Judge and Competitive Programmin
 
 ## 🌟 Key Platform Features
 
-### 1. ⚙️ Asynchronous Judge Queue & Real-Time Streaming
+### 1. ⚙️ Asynchronous Judge Queue & Deep Profiling
 - **Non-Blocking Ingestion**: Submissions respond immediately with `HTTP 202 Accepted` and are placed in a FIFO queue.
 - **Worker Concurrency Control**: Configurable worker pool (default: 2 parallel runners) prevents Docker container exhaustion and system overload.
 - **Live SSE Progress Updates**: Streams real-time execution states directly to the user's browser:
   $$\text{Queued} \longrightarrow \text{Compiling} \longrightarrow \text{Running Test } X/Y \longrightarrow \text{Accepted / Verdict}$$
-- **Zero-Crash Auto-Migration**: Automatic startup database migration verifies and syncs table schemas non-destructively.
+- **💾 Peak Memory Consumption Tracking**: Profiles and reports memory consumption in Megabytes (`MB`) alongside execution runtime (`ms`).
+- **📊 Performance Benchmark Percentiles**: Evaluates and displays dynamic percentile rankings (e.g. *⏱️ Beats 94.2% | 💾 Memory beats 91.0%*).
+- **🧪 Per-Testcase Diagnostic Matrix**: Interactive matrix displaying individual statuses, runtimes, and memory footprints for every evaluated testcase.
 
-### 2. 💻 VS Code Monaco Editor Experience
+### 2. 💻 VS Code Monaco Editor & Draggable Workspace
+- **↔️ Draggable Split-Pane Workspace (LeetCode Style)**:
+  - **Horizontal Split**: Drag divider between Problem Statement and Code Workspace to customize pane widths.
+  - **Vertical Split**: Drag divider between Monaco Editor and the Testcase / Results Console to adjust console height.
+  - **Persistence & Reset**: Remembers custom split ratios in `localStorage`; **double-click** any divider to reset to default.
 - **Multi-Language IDE**: Native syntax highlighting, bracket colorization, code folding, and auto-indentation for:
   - 🟨 **JavaScript (Node.js 20)**
   - 🟦 **Python 3.12**
   - 🔷 **C++17 (GCC 14)**
   - ☕ **Java 21 (OpenJDK Temurin)**
-- **Draft Persistence**: Code is automatically cached in `localStorage` per problem and language — drafts are never lost on page refresh.
-- **Custom Keybindings**:
-  - `Ctrl + Enter` / `Cmd + Enter` $\to$ **Run Code** (Arbitrary custom test input)
-  - `Ctrl + Shift + Enter` $\to$ **Submit Solution** (Hidden judge test suite)
-- **Reset to Template**: Instant one-click restoration of boilerplate starter code.
+- **🧹 Built-In Code Formatter**: One-click **"Format"** button and keyboard shortcuts (`Shift + Alt + F` / `Ctrl + Shift + F`).
+- **Draft Persistence**: Code is automatically cached in `localStorage` per problem and language — drafts are never lost on refresh.
+- **Keybindings**: `Ctrl + Enter` (Run Code) and `Ctrl + Shift + Enter` (Submit Solution).
 
-### 3. 🛡️ Hardened Multi-Language Docker Sandbox
+### 3. 🔍 Side-by-Side Diff Viewer & Multi-Case Playground
+- **Side-by-Side Output Diff**: Visual comparison card displaying **Expected Output vs Actual Output** with highlighted diffs and one-click copy buttons.
+- **Multi-Testcase Tabs**: Dedicated `Case 1`, `Case 2`, `+ Add Case` tabs in the custom test runner.
+- **Sparkles Quick Sample Loader**: Click **"Load Sample Cases"** to automatically populate all problem example inputs into test tabs in one click.
+- **One-Click Example Copy**: Interactive floating copy buttons on example input/output blocks in problem statements.
+
+### 4. 🛡️ Hardened Multi-Language Docker Sandbox
 All user code is executed in ephemeral, isolated Docker containers with strict resource and security constraints:
 - 🚫 **Network Disabled**: `--network none` prevents outbound sockets or network requests.
 - 💾 **Memory & CPU Caps**: Memory clamped to 256MB (`--memory 256m`, `--memory-swap 256m`) and CPU throttled (`--cpus 0.5`).
@@ -43,7 +54,7 @@ All user code is executed in ephemeral, isolated Docker containers with strict r
 - 🔒 **Least Privilege Security**: `--read-only` root filesystem, `--cap-drop ALL`, and `--security-opt no-new-privileges`.
 - 📁 **Isolated Storage**: Temporary in-memory compilation workspace via `--tmpfs /tmp` and `--tmpfs /work`.
 
-### 4. 🏆 Interactive Contests Engine & Dynamic Standings
+### 5. 🏆 Interactive Contests Engine & Dynamic Standings
 - **Live Countdown Timer**: Dynamic clock transitioning smoothly between **Upcoming**, **Live**, and **Concluded** states.
 - **Contest Problem Sets**: Problems labeled by contest order (**A**, **B**, **C**) with custom score weights (e.g. 100 pts, 200 pts, 300 pts).
 - **ICPC / LeetCode Scoreboard Matrix**:
@@ -51,13 +62,13 @@ All user code is executed in ephemeral, isolated Docker containers with strict r
   - Solved problems display solve time and attempt count (`+1`, `+2 (14m)`); failed attempts display penalty markers (`-2`).
 - **One-Click Registration**: Track contest participants with dedicated participant rosters.
 
-### 5. 📊 User Profile, Solving Stats & 365-Day Activity Heatmap
+### 6. 📊 User Profile, Solving Stats & 365-Day Activity Heatmap
 - **Difficulty Breakdown**: Visual progress bars tracking solved problems across **Easy**, **Medium**, and **Hard** tiers.
 - **365-Day Contribution Graph**: 52-week activity heatmap with green intensity tiers and hover tooltips showing daily submission frequencies.
 - **Source Code Viewer Modal**: Inspect past submissions with a read-only Monaco Editor, runtime benchmarks, verdict tags, and one-click code copying.
 - **Public Profiles**: Share progress and stats via `/profile` or `/u/:username`.
 
-### 6. 💬 Community Discussion & Editorial Forum
+### 7. 💬 Community Discussion & Editorial Forum
 - **Categorized Forums**: Filter and post discussions across **Solutions**, **Help**, **Contests**, and **Algorithms**.
 - **Interactive Upvoting**: Upvote helpful community explanations and time complexity breakdowns.
 - **Search & Filter**: Find editorials and approaches by keyword, topic, or author.
@@ -69,7 +80,7 @@ All user code is executed in ephemeral, isolated Docker containers with strict r
 ```text
                                   ┌────────────────────────────────────────────────────────┐
                                   │                  React 18 + Vite Client                │
-                                  │  (Monaco Editor • Activity Heatmap • Contest Matrix)  │
+                                  │  (SplitPane • Monaco IDE • DiffViewer • Heatmaps)     │
                                   └───────────────▲────────────────────────▲───────────────┘
                                                   │                        │
                                      HTTP / REST API              Server-Sent Events (SSE)
@@ -99,7 +110,7 @@ All user code is executed in ephemeral, isolated Docker containers with strict r
                                                   │
                                   ┌───────────────▼────────────────────────────────────────┐
                                   │                    MySQL 8.0 Database                  │
-                                  │    (Users • Problems • Submissions • Contests • Posts) │
+                                  │  (Users • Problems • Submissions • Contests • Posts)   │
                                   └────────────────────────────────────────────────────────┘
 ```
 
@@ -112,7 +123,7 @@ The database schema is managed automatically upon server startup via non-destruc
 - `users` — User credentials, bcrypt password hashes, and profile timestamps.
 - `problems` — Problem statements, difficulty levels, tags, input/output formats, examples, and solved counts.
 - `test_cases` — Sample and hidden test cases for automated judging.
-- `submissions` — Submission source code, language, verdict, runtime, passed/total test count, error detail, and contest ID.
+- `submissions` — Submission source code, language, verdict, runtime, `memory_mb`, passed/total test count, error detail, and contest ID.
 - `contests` — Contest metadata, start times, durations, and statuses (`Upcoming`, `Live`, `Finished`).
 - `contest_problems` — Problem-to-contest mapping with letter labels (`A`, `B`, `C`) and score weights.
 - `contest_registrations` — User contest registrations.
@@ -218,6 +229,7 @@ npm run dev
 |---|---|
 | `Ctrl + Enter` / `Cmd + Enter` | **Run Code** against Custom Input in Docker sandbox |
 | `Ctrl + Shift + Enter` / `Cmd + Shift + Enter` | **Submit Solution** to Asynchronous Judge Queue |
+| `Shift + Alt + F` / `Ctrl + Shift + F` | **Format Code** in Monaco Editor |
 | `Escape` | Close Code Viewer / Discussion Modals |
 
 ---
@@ -229,12 +241,14 @@ CodeForge/
 ├── client/                      # React 18 + Vite Frontend
 │   ├── src/
 │   │   ├── components/          # Reusable Components
-│   │   │   ├── CodeEditor.jsx   # Monaco Editor Wrapper & Shortcuts
+│   │   │   ├── CodeEditor.jsx   # Monaco Editor Wrapper, Shortcuts & Formatter
 │   │   │   ├── CodeModal.jsx    # Read-only Source Code Viewer Modal
 │   │   │   ├── ContestTimer.jsx # Live Countdown Clock
+│   │   │   ├── DiffViewer.jsx   # Side-by-Side Expected vs Actual Diff Card
 │   │   │   ├── Navbar.jsx       # Header Navigation & Auth Controls
+│   │   │   ├── SplitPane.jsx    # Draggable Horizontal/Vertical Resizer
 │   │   │   ├── SubmissionHeatmap.jsx # 52-Week Activity Heatmap
-│   │   │   └── TestcasePanel.jsx# Custom Input & Live SSE Verdicts
+│   │   │   └── TestcasePanel.jsx# Multi-Case Input, Matrix & Live Verdicts
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx  # Global Auth State & Token Management
 │   │   ├── pages/               # Application Views
@@ -246,10 +260,10 @@ CodeForge/
 │   │   │   ├── HomePage.jsx     # Landing Page & Metrics
 │   │   │   ├── Leaderboard.jsx  # Global User Rankings
 │   │   │   ├── ProblemsCatalog.jsx # Search & Filterable Problem List
-│   │   │   ├── ProblemWorkspace.jsx# Split-screen Monaco Workspace
+│   │   │   ├── ProblemWorkspace.jsx# Resizable Split-Screen Workspace
 │   │   │   └── Profile.jsx      # User Profile & Stats Dashboard
 │   │   ├── api.js               # Axios Client Configuration
-│   │   ├── main.jsx             # React App Root & Router
+│   │   ├── main.jsx             # React App Root, ErrorBoundary & Router
 │   │   └── styles.css           # Core Dark Theme Stylesheet
 │   └── package.json
 ├── database/
@@ -260,7 +274,7 @@ CodeForge/
 │   │   ├── auth.js              # JWT Authentication Middleware
 │   │   ├── db.js                # MySQL Connection Pool & Auto-Migration
 │   │   ├── index.js             # Express API Endpoints & SSE Streaming
-│   │   ├── judge.js             # Docker Sandbox Runner & Stdin Handler
+│   │   ├── judge.js             # Docker Sandbox Runner, Memory Profiler & Diagnostics
 │   │   └── queue.js             # Asynchronous Concurrency JudgeQueue
 │   └── package.json
 ├── package.json                 # Monorepo Workspace Scripts
@@ -268,3 +282,6 @@ CodeForge/
 ```
 
 ---
+
+## 📄 License
+This project is licensed under the [MIT License](LICENSE).
