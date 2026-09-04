@@ -1,13 +1,19 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool, initDatabase } from './db.js';
 import { authenticate } from './auth.js';
 import { runCustomCode, supportedLanguages } from './judge.js';
 import { judgeQueue } from './queue.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
 
 const clientOrigin = process.env.CLIENT_URL;
 app.use(cors({
