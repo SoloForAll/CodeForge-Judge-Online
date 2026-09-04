@@ -17,7 +17,24 @@ const tokenFor = (user) => jwt.sign({ id: user.id, username: user.username }, pr
 // Auto-migrate schema on server startup
 initDatabase().catch(err => console.warn('[Database] Initial auto-migration notice:', err.message));
 
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'CodeForge Judge Online API',
+    status: 'online',
+    clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      problems: '/api/problems',
+      contests: '/api/contests',
+      leaderboard: '/api/leaderboard',
+      discuss: '/api/discuss'
+    }
+  });
+});
+
 app.get('/api/health', async (_req, res) => {
+
   try {
     await pool.query('SELECT 1');
     res.json({
