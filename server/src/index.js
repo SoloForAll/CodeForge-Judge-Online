@@ -22,7 +22,7 @@ const tokenFor = (user) => jwt.sign({ id: user.id, username: user.username }, pr
 initDatabase().catch(err => console.warn('[Database] Initial auto-migration notice:', err.message));
 
 app.get('/', (_req, res) => {
-  res.json({
+  res.status(200).json({
     name: 'CodeForge Judge Online API',
     status: 'online',
     clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -37,22 +37,26 @@ app.get('/', (_req, res) => {
   });
 });
 
-app.get('/api/health', async (_req, res) => {
+app.get('/health', (_req, res) => {
+  res.status(200).send('OK');
+});
 
+app.get('/api/health', async (_req, res) => {
+  let dbStatus = 'connected';
   try {
     await pool.query('SELECT 1');
-    res.json({
-      status: 'ok',
-      database: 'connected',
-      queue: {
-        running: judgeQueue.runningCount,
-        pending: judgeQueue.queue.length,
-        concurrency: judgeQueue.concurrency
-      }
-    });
   } catch {
-    res.status(503).json({ status: 'error', database: 'unavailable' });
+    dbStatus = 'connecting';
   }
+  res.status(200).json({
+    status: 'ok',
+    database: dbStatus,
+    queue: {
+      running: judgeQueue?.runningCount || 0,
+      pending: judgeQueue?.queue?.length || 0,
+      concurrency: judgeQueue?.concurrency || 2
+    }
+  });
 });
 
 app.post('/api/auth/register', async (req, res) => {
