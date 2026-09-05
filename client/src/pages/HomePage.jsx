@@ -19,7 +19,7 @@ export function HomePage() {
           <p className="eyebrow">PRACTICE. COMPETE. IMPROVE.</p>
           <h1>Build your problem-solving edge.</h1>
           <p className="muted">
-            Solve curated algorithmic challenges, test code live in an isolated Docker sandbox, and climb the leaderboard.
+            Solve curated algorithmic challenges, test code live in an isolated secure sandbox, and climb the leaderboard.
           </p>
           <div className="hero-actions">
             <Link className="button" to="/problems">

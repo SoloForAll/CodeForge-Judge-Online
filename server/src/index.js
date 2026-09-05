@@ -513,90 +513,115 @@ app.get('/api/leaderboard', async (_req, res) => {
   }
 });
 
-// User Profile & Statistics Dashboard Endpoint
-app.get('/api/users/:username/profile', async (req, res) => {
-  const { username } = req.params;
+// Helper to build user profile & statistics dashboard response
+async function fetchUserProfile(userId, res) {
+  const [users] = await pool.execute(
+    'SELECT id, name, username, email, created_at FROM users WHERE id = ? LIMIT 1',
+    [userId]
+  );
+  if (!users[0]) return res.status(404).json({ message: 'User not found.' });
+  const user = users[0];
+
+  // Total problems by difficulty
+  const [difficultyTotals] = await pool.query(
+    'SELECT difficulty, COUNT(*) as count FROM problems GROUP BY difficulty'
+  );
+  const totals = { Easy: 0, Medium: 0, Hard: 0, Total: 0 };
+  for (const d of difficultyTotals) {
+    totals[d.difficulty] = Number(d.count);
+    totals.Total += Number(d.count);
+  }
+
+  // User solved problems by difficulty
+  const [solvedRows] = await pool.execute(
+    `SELECT p.difficulty, COUNT(DISTINCT p.id) as solved 
+     FROM submissions s 
+     JOIN problems p ON p.id = s.problem_id 
+     WHERE s.user_id = ? AND s.verdict = 'Accepted' 
+     GROUP BY p.difficulty`,
+    [user.id]
+  );
+  const solved = { Easy: 0, Medium: 0, Hard: 0, Total: 0 };
+  for (const s of solvedRows) {
+    solved[s.difficulty] = Number(s.solved);
+    solved.Total += Number(s.solved);
+  }
+
+  // Submission summary stats
+  const [subStats] = await pool.execute(
+    'SELECT COUNT(*) as total_submissions, COUNT(CASE WHEN verdict = "Accepted" THEN 1 END) as total_accepted FROM submissions WHERE user_id = ?',
+    [user.id]
+  );
+  const totalSubmissions = Number(subStats[0]?.total_submissions || 0);
+  const totalAccepted = Number(subStats[0]?.total_accepted || 0);
+  const acceptanceRate = totalSubmissions > 0 ? Math.round((totalAccepted / totalSubmissions) * 100) : 0;
+
+  // 365-day submission heatmap activity
+  const [activityRows] = await pool.execute(
+    `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count 
+     FROM submissions 
+     WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 365 DAY) 
+     GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') 
+     ORDER BY date ASC`,
+    [user.id]
+  );
+
+  // Recent submissions
+  const [recentSubmissions] = await pool.execute(
+    `SELECT s.id, p.title as problem_title, p.slug as problem_slug, p.difficulty, s.language, s.verdict, s.runtime_ms, s.created_at 
+     FROM submissions s 
+     JOIN problems p ON p.id = s.problem_id 
+     WHERE s.user_id = ? 
+     ORDER BY s.created_at DESC 
+     LIMIT 30`,
+    [user.id]
+  );
+
+  res.json({
+    user: {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      createdAt: user.created_at
+    },
+    stats: {
+      solved,
+      totals,
+      totalSubmissions,
+      totalAccepted,
+      acceptanceRate,
+      score: solved.Total * 100
+    },
+    activity: activityRows,
+    recentSubmissions
+  });
+}
+
+// Current authenticated user's own profile
+app.get('/api/users/me/profile', authenticate, async (req, res) => {
   try {
+    await fetchUserProfile(req.user.id, res);
+  } catch (error) {
+    console.error('Error fetching own profile:', error);
+    res.status(500).json({ message: 'Failed to load user profile.' });
+  }
+});
+
+// Any user's profile by username (with support for encoded characters like #)
+app.get('/api/users/:username/profile', async (req, res) => {
+  let { username } = req.params;
+  try {
+    try {
+      username = decodeURIComponent(username);
+    } catch {}
+
     const [users] = await pool.execute(
-      'SELECT id, name, username, email, created_at FROM users WHERE username = ? LIMIT 1',
+      'SELECT id FROM users WHERE username = ? LIMIT 1',
       [username]
     );
     if (!users[0]) return res.status(404).json({ message: 'User not found.' });
-    const user = users[0];
 
-    // Total problems by difficulty
-    const [difficultyTotals] = await pool.query(
-      'SELECT difficulty, COUNT(*) as count FROM problems GROUP BY difficulty'
-    );
-    const totals = { Easy: 0, Medium: 0, Hard: 0, Total: 0 };
-    for (const d of difficultyTotals) {
-      totals[d.difficulty] = Number(d.count);
-      totals.Total += Number(d.count);
-    }
-
-    // User solved problems by difficulty
-    const [solvedRows] = await pool.execute(
-      `SELECT p.difficulty, COUNT(DISTINCT p.id) as solved 
-       FROM submissions s 
-       JOIN problems p ON p.id = s.problem_id 
-       WHERE s.user_id = ? AND s.verdict = 'Accepted' 
-       GROUP BY p.difficulty`,
-      [user.id]
-    );
-    const solved = { Easy: 0, Medium: 0, Hard: 0, Total: 0 };
-    for (const s of solvedRows) {
-      solved[s.difficulty] = Number(s.solved);
-      solved.Total += Number(s.solved);
-    }
-
-    // Submission summary stats
-    const [subStats] = await pool.execute(
-      'SELECT COUNT(*) as total_submissions, COUNT(CASE WHEN verdict = "Accepted" THEN 1 END) as total_accepted FROM submissions WHERE user_id = ?',
-      [user.id]
-    );
-    const totalSubmissions = Number(subStats[0]?.total_submissions || 0);
-    const totalAccepted = Number(subStats[0]?.total_accepted || 0);
-    const acceptanceRate = totalSubmissions > 0 ? Math.round((totalAccepted / totalSubmissions) * 100) : 0;
-
-    // 365-day submission heatmap activity
-    const [activityRows] = await pool.execute(
-      `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count 
-       FROM submissions 
-       WHERE user_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 365 DAY) 
-       GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') 
-       ORDER BY date ASC`,
-      [user.id]
-    );
-
-    // Recent submissions
-    const [recentSubmissions] = await pool.execute(
-      `SELECT s.id, p.title as problem_title, p.slug as problem_slug, p.difficulty, s.language, s.verdict, s.runtime_ms, s.created_at 
-       FROM submissions s 
-       JOIN problems p ON p.id = s.problem_id 
-       WHERE s.user_id = ? 
-       ORDER BY s.created_at DESC 
-       LIMIT 30`,
-      [user.id]
-    );
-
-    res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        createdAt: user.created_at
-      },
-      stats: {
-        solved,
-        totals,
-        totalSubmissions,
-        totalAccepted,
-        acceptanceRate,
-        score: solved.Total * 100
-      },
-      activity: activityRows,
-      recentSubmissions
-    });
+    await fetchUserProfile(users[0].id, res);
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ message: 'Failed to load user profile.' });

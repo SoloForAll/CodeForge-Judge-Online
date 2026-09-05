@@ -145,7 +145,7 @@ export function ContestDetail() {
           <li><b>Scoring:</b> Points for each solved problem are added to your total score immediately upon passing all test cases.</li>
           <li><b>Time Penalty:</b> Penalty is calculated as the submission time (in minutes from contest start) plus a <b>10-minute penalty</b> for each failed attempt on solved problems.</li>
           <li><b>Ranking:</b> Coders are ranked by highest total score first, then lowest time penalty.</li>
-          <li><b>Environment:</b> Standard competitive libraries for JavaScript, Python, C++, and Java are supported in an isolated Docker sandbox.</li>
+          <li><b>Environment:</b> Standard competitive libraries for JavaScript, Python, C++, and Java are supported in an isolated secure sandbox.</li>
         </ul>
       </div>
     </section>

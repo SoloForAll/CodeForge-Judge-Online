@@ -1,6 +1,108 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
-import { RotateCcw, Play, Send, Sparkles } from 'lucide-react';
+import { RotateCcw, Play, Send, Sparkles, Check } from 'lucide-react';
+
+// Lightweight intelligent code formatter for competitive programming
+function beautifyCode(rawCode, lang) {
+  if (!rawCode || typeof rawCode !== 'string') return rawCode;
+
+  if (lang === 'Python') {
+    const rawLines = rawCode.replace(/\r\n/g, '\n').split('\n');
+    let indent = 0;
+    const result = [];
+
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const trimmed = line.trim();
+
+      if (!trimmed) {
+        if (result.length > 0 && result[result.length - 1] === '') continue;
+        result.push('');
+        continue;
+      }
+
+      // Check dedent keywords in Python
+      if (
+        trimmed.startsWith('elif ') ||
+        trimmed.startsWith('elif(') ||
+        trimmed.startsWith('else:') ||
+        trimmed.startsWith('except ') ||
+        trimmed.startsWith('except:') ||
+        trimmed.startsWith('finally:')
+      ) {
+        indent = Math.max(0, indent - 1);
+      }
+
+      // Clean spacing after commas and normalize end of line colon
+      const formattedLine = trimmed
+        .replace(/\s*,\s*/g, ', ')
+        .replace(/\s*:\s*$/, ':');
+
+      result.push('    '.repeat(indent) + formattedLine);
+
+      // If line opens a block
+      if (trimmed.endsWith(':')) {
+        indent++;
+      } else if (
+        trimmed.startsWith('return ') ||
+        trimmed === 'return' ||
+        trimmed.startsWith('raise ') ||
+        trimmed === 'break' ||
+        trimmed === 'continue' ||
+        trimmed === 'pass'
+      ) {
+        const nextLine = rawLines.slice(i + 1).find((l) => l.trim().length > 0);
+        if (nextLine) {
+          const originalIndent = (nextLine.match(/^\s*/) || [''])[0].length;
+          const currentOriginalIndent = (line.match(/^\s*/) || [''])[0].length;
+          if (originalIndent < currentOriginalIndent) {
+            indent = Math.max(0, Math.floor(originalIndent / 4));
+          }
+        }
+      }
+    }
+
+    return result.join('\n');
+  }
+
+  if (lang === 'C++' || lang === 'Java' || lang === 'JavaScript') {
+    const rawLines = rawCode.replace(/\r\n/g, '\n').split('\n');
+    let indent = 0;
+    const result = [];
+
+    for (let line of rawLines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        if (result.length > 0 && result[result.length - 1] === '') continue;
+        result.push('');
+        continue;
+      }
+
+      const leadingCloses = (trimmed.match(/^(\s*\})+/) || [''])[0].replace(/\s+/g, '').length;
+      if (leadingCloses > 0) {
+        indent = Math.max(0, indent - leadingCloses);
+      }
+
+      let formattedLine = trimmed
+        .replace(/\s*,\s*/g, ', ')
+        .replace(/\s*;\s*/g, '; ');
+
+      if (formattedLine.endsWith('; ')) {
+        formattedLine = formattedLine.slice(0, -1);
+      }
+
+      result.push('    '.repeat(indent) + formattedLine);
+
+      const opens = (trimmed.match(/\{/g) || []).length;
+      const closes = (trimmed.match(/\}/g) || []).length;
+      indent = Math.max(0, indent + opens - (closes - leadingCloses));
+    }
+
+    return result.join('\n');
+  }
+
+  return rawCode;
+}
 
 
 export const STARTER_TEMPLATES = {
@@ -106,20 +208,44 @@ export function CodeEditor({
     }
   };
 
+  const [formattedFeedback, setFormattedFeedback] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState(false);
+
   const handleReset = () => {
-    if (window.confirm('Reset editor to default starter template?')) {
-      const template = STARTER_TEMPLATES[language] || '';
-      onChange(template);
-      if (problemSlug) {
-        localStorage.setItem(`codeforge_draft_${problemSlug}_${language}`, template);
-      }
+    const template = STARTER_TEMPLATES[language] || '// Write your solution here\n';
+    if (editorRef.current) {
+      editorRef.current.setValue(template);
     }
+    onChange(template);
+    if (problemSlug) {
+      localStorage.setItem(`codeforge_draft_${problemSlug}_${language}`, template);
+    }
+    setResetFeedback(true);
+    setTimeout(() => setResetFeedback(false), 1200);
   };
 
   const handleFormatCode = () => {
-    if (editorRef.current) {
-      editorRef.current.getAction('editor.action.formatDocument')?.run();
+    if (!editorRef.current) return;
+
+    if (language === 'JavaScript') {
+      try {
+        const action = editorRef.current.getAction('editor.action.formatDocument');
+        if (action) action.run();
+      } catch {}
     }
+
+    const currentVal = editorRef.current.getValue();
+    const formatted = beautifyCode(currentVal, language);
+    if (formatted && formatted !== currentVal) {
+      editorRef.current.setValue(formatted);
+      onChange(formatted);
+      if (problemSlug) {
+        localStorage.setItem(`codeforge_draft_${problemSlug}_${language}`, formatted);
+      }
+    }
+
+    setFormattedFeedback(true);
+    setTimeout(() => setFormattedFeedback(false), 1500);
   };
 
   const handleEditorDidMount = (editor, monaco) => {
@@ -160,18 +286,27 @@ export function CodeEditor({
 
         <div className="editor-top-actions">
           <button
-            className="linkbutton format-btn"
+            className={`linkbutton format-btn ${formattedFeedback ? 'active' : ''}`}
             title="Auto-format code (Shift+Alt+F)"
             onClick={handleFormatCode}
           >
-            <Sparkles size={13} /> Format
+            {formattedFeedback ? (
+              <>
+                <Check size={13} style={{ color: '#22c55e' }} /> Formatted!
+              </>
+            ) : (
+              <>
+                <Sparkles size={13} /> Format
+              </>
+            )}
           </button>
           <button
             className="linkbutton reset-btn"
             title="Reset code to default template"
             onClick={handleReset}
           >
-            <RotateCcw size={13} /> Reset
+            <RotateCcw size={13} className={resetFeedback ? 'icon-spin' : ''} />
+            {resetFeedback ? 'Reset!' : 'Reset'}
           </button>
         </div>
       </div>

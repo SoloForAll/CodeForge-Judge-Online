@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 
 export function Leaderboard() {
@@ -20,7 +21,13 @@ export function Leaderboard() {
             <div className="table-row" key={r.username || i}>
               <b>#{i + 1}</b>
               <span className="avatar">{r.name ? r.name[0].toUpperCase() : 'U'}</span>
-              <strong>{r.username}</strong>
+              <Link
+                to={`/profile/${encodeURIComponent(r.username)}`}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+                title={`View ${r.username}'s profile`}
+              >
+                <strong style={{ cursor: 'pointer', transition: 'color 0.15s' }}>{r.username}</strong>
+              </Link>
               <span>{r.solved} solved</span>
               <b>{r.score} pts</b>
             </div>

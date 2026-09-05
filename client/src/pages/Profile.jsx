@@ -12,26 +12,35 @@ export function Profile() {
   const { username: paramUsername } = useParams();
   const { user: authUser } = useAuth();
 
-  const targetUsername = paramUsername || authUser?.username;
+  const decodedParam = paramUsername ? (() => {
+    try { return decodeURIComponent(paramUsername); } catch { return paramUsername; }
+  })() : null;
+
+  const targetUsername = decodedParam || authUser?.username;
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSubId, setSelectedSubId] = useState(null);
 
   useEffect(() => {
-    if (!targetUsername) {
+    if (!targetUsername && !authUser) {
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    api.get(`/users/${targetUsername}/profile`)
+    // When visiting /profile as authenticated user, use /users/me/profile directly
+    const url = !decodedParam && authUser
+      ? '/users/me/profile'
+      : `/users/${encodeURIComponent(targetUsername)}/profile`;
+
+    api.get(url)
       .then((r) => {
         setProfile(r.data);
       })
       .catch(() => setProfile(null))
       .finally(() => setLoading(false));
-  }, [targetUsername]);
+  }, [decodedParam, targetUsername, authUser]);
 
   if (!targetUsername && !authUser) {
     return (

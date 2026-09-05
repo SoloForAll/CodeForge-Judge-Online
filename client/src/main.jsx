@@ -80,6 +80,7 @@ function App() {
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/discuss" element={<Discuss />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/:username" element={<Profile />} />
               <Route path="/u/:username" element={<Profile />} />
               <Route path="/login" element={<Auth register={false} />} />
               <Route path="/register" element={<Auth register={true} />} />

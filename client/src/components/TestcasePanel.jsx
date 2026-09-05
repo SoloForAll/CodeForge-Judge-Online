@@ -247,28 +247,34 @@ export function TestcasePanel({
                   />
                 )}
 
-                {/* Standard Output and Error Logs */}
-                {judgeState.customResult && !expectedOutput && (
+                {/* Standard Output (when no expectedOutput) */}
+                {judgeState.customResult?.stdout && !expectedOutput && (
                   <div className="custom-result-output">
-                    {judgeState.customResult.stdout && (
-                      <div>
-                        <b>Standard Output:</b>
-                        <pre>{judgeState.customResult.stdout}</pre>
-                      </div>
-                    )}
-                    {judgeState.customResult.stderr && (
-                      <div>
-                        <b className="text-danger">Standard Error / Logs:</b>
-                        <pre className="text-danger">{judgeState.customResult.stderr}</pre>
-                      </div>
-                    )}
+                    <div>
+                      <b>Standard Output:</b>
+                      <pre>{judgeState.customResult.stdout}</pre>
+                    </div>
                   </div>
                 )}
 
-                {judgeState.detail && (
+                {/* Standard Error / Traceback (ALWAYS rendered if present) */}
+                {judgeState.customResult?.stderr && (
+                  <div className="custom-result-output" style={{ marginTop: '12px' }}>
+                    <div>
+                      <b className="text-danger" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <AlertTriangle size={14} /> Error Traceback / Logs:
+                      </b>
+                      <pre className="text-danger" style={{ whiteSpace: 'pre-wrap', marginTop: '6px' }}>
+                        {judgeState.customResult.stderr}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {judgeState.detail && judgeState.detail !== judgeState.customResult?.stderr && (
                   <div className="detail-logs">
                     <b>Logs / Error Detail:</b>
-                    <pre>{judgeState.detail}</pre>
+                    <pre style={{ whiteSpace: 'pre-wrap' }}>{judgeState.detail}</pre>
                   </div>
                 )}
               </div>

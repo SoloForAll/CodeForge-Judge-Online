@@ -90,7 +90,7 @@ export function ProblemWorkspace() {
     setActiveTab('results');
     setJudgeState({
       status: 'running_custom',
-      message: 'Running code in Docker sandbox container...',
+      message: 'Executing code in secure sandbox...',
       verdict: 'Running',
       percent: 50,
       customResult: null
@@ -127,7 +127,8 @@ export function ProblemWorkspace() {
           : 'Program Exited With Error',
         verdict: verdictText,
         runtimeMs: data.runtimeMs,
-        customResult: data
+        customResult: data,
+        detail: data.stderr || ''
       });
     } catch (e) {
       setJudgeState({
