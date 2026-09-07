@@ -5,11 +5,12 @@
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%7C%20Vite-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MySQL](https://img.shields.io/badge/Database-MySQL%208.0-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
-[![Docker](https://img.shields.io/badge/Sandbox-Docker%20Containers-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Judge0 CE](https://img.shields.io/badge/Execution-Judge0%20CE%20Cloud-0A84FF?logo=target&logoColor=white)](https://ce.judge0.com/)
 [![Monaco Editor](https://img.shields.io/badge/Editor-VS%20Code%20Monaco-007ACC?logo=visualstudiocode&logoColor=white)](https://microsoft.github.io/monaco-editor/)
+[![Deployment](https://img.shields.io/badge/Deploy-Railway%20%7C%20Vercel-0B0D0E?logo=railway&logoColor=white)](https://railway.app/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An enterprise-grade, full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, hardened **Docker Sandboxes**, **Draggable Split-Pane Workspaces**, **Peak Memory Profiling (MB)**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
+An enterprise-grade, full-stack **Online Coding Judge and Competitive Programming Platform**. Built with an **Asynchronous Judge Queue**, real-time **Server-Sent Events (SSE)** execution streaming, an integrated **VS Code Monaco Editor**, a high-speed **Cloud Execution Engine (Judge0 CE)**, **Draggable Split-Pane Workspaces**, **Peak Memory Profiling (MB)**, **Interactive Contests with Live Standings**, **365-day Activity Heatmaps**, and a **Community Discussion Forum**.
 
 </div>
 
@@ -19,10 +20,10 @@ An enterprise-grade, full-stack **Online Coding Judge and Competitive Programmin
 
 ### 1. ⚙️ Asynchronous Judge Queue & Deep Profiling
 - **Non-Blocking Ingestion**: Submissions respond immediately with `HTTP 202 Accepted` and are placed in a FIFO queue.
-- **Worker Concurrency Control**: Configurable worker pool (default: 2 parallel runners) prevents Docker container exhaustion and system overload.
+- **Worker Concurrency Control**: Configurable worker pool (default: 2 parallel runners) manages judging throughput and system stability.
 - **Live SSE Progress Updates**: Streams real-time execution states directly to the user's browser:
   $$\text{Queued} \longrightarrow \text{Compiling} \longrightarrow \text{Running Test } X/Y \longrightarrow \text{Accepted / Verdict}$$
-- **💾 Peak Memory Consumption Tracking**: Profiles and reports memory consumption in Megabytes (`MB`) alongside execution runtime (`ms`).
+- **💾 Peak Memory Consumption Tracking**: Accurate peak memory measurement in Megabytes (`MB`) alongside execution runtime (`ms`).
 - **📊 Performance Benchmark Percentiles**: Evaluates and displays dynamic percentile rankings (e.g. *⏱️ Beats 94.2% | 💾 Memory beats 91.0%*).
 - **🧪 Per-Testcase Diagnostic Matrix**: Interactive matrix displaying individual statuses, runtimes, and memory footprints for every evaluated testcase.
 
@@ -34,9 +35,10 @@ An enterprise-grade, full-stack **Online Coding Judge and Competitive Programmin
 - **Multi-Language IDE**: Native syntax highlighting, bracket colorization, code folding, and auto-indentation for:
   - 🟨 **JavaScript (Node.js 20)**
   - 🟦 **Python 3.12**
-  - 🔷 **C++17 (GCC 14)**
-  - ☕ **Java 21 (OpenJDK Temurin)**
-- **🧹 Built-In Code Formatter**: One-click **"Format"** button and keyboard shortcuts (`Shift + Alt + F` / `Ctrl + Shift + F`).
+  - 🔷 **C++ (GCC 14)**
+  - ☕ **Java (JDK 17)**
+- **🧹 Smart Multi-Language Code Formatter**: Intelligent, custom language-aware formatter supporting Python (indentation depth, colon-blocks, and dedent tracking), C++, Java, and JavaScript (`Shift + Alt + F` or click **"Format"**).
+- **↺ Instant Editor Reset**: Reverts Monaco editor buffer directly to clean starter templates with immediate visual feedback (`✓ Formatted!`, `↺ Reset!`).
 - **Draft Persistence**: Code is automatically cached in `localStorage` per problem and language — drafts are never lost on refresh.
 - **Keybindings**: `Ctrl + Enter` (Run Code) and `Ctrl + Shift + Enter` (Submit Solution).
 
@@ -45,14 +47,15 @@ An enterprise-grade, full-stack **Online Coding Judge and Competitive Programmin
 - **Multi-Testcase Tabs**: Dedicated `Case 1`, `Case 2`, `+ Add Case` tabs in the custom test runner.
 - **Sparkles Quick Sample Loader**: Click **"Load Sample Cases"** to automatically populate all problem example inputs into test tabs in one click.
 - **One-Click Example Copy**: Interactive floating copy buttons on example input/output blocks in problem statements.
+- **⚠️ Full Error Traceback & Compiler Stderr**: Complete compiler errors and runtime tracebacks (e.g. Python `ValueError`, C++ segmentation faults) are surfaced with visual alerts in the results panel.
 
-### 4. 🛡️ Hardened Multi-Language Docker Sandbox
-All user code is executed in ephemeral, isolated Docker containers with strict resource and security constraints:
-- 🚫 **Network Disabled**: `--network none` prevents outbound sockets or network requests.
-- 💾 **Memory & CPU Caps**: Memory clamped to 256MB (`--memory 256m`, `--memory-swap 256m`) and CPU throttled (`--cpus 0.5`).
-- ⏱️ **Process & PID Quotas**: `--pids-limit 64` prevents fork bombs.
-- 🔒 **Least Privilege Security**: `--read-only` root filesystem, `--cap-drop ALL`, and `--security-opt no-new-privileges`.
-- 📁 **Isolated Storage**: Temporary in-memory compilation workspace via `--tmpfs /tmp` and `--tmpfs /work`.
+### 4. ☁️ High-Speed Cloud Execution Engine (Judge0 CE)
+All user code is executed securely via cloud-based judge infrastructure powered by **Judge0 CE**:
+- **Zero Local Docker Dependency**: No local Docker daemon or heavy containers required on your machine or deployment server.
+- **Ultra-Low Latency**: Near-instant execution (< 5ms runner spin-up for compiled C++ / Python / JS).
+- **Precise Profiling**: Accurate millisecond-level execution runtimes and peak memory profiling.
+- **Comprehensive Status Detection**: Full support for Accepted (3), Time Limit Exceeded (5), Compilation Error (6), and Runtime Errors (7–14).
+- **Cloud-Ready**: Works out of the box on cloud hosting platforms such as Railway, Render, Fly.io, and AWS without privileged container requirements.
 
 ### 5. 🏆 Interactive Contests Engine & Dynamic Standings
 - **Live Countdown Timer**: Dynamic clock transitioning smoothly between **Upcoming**, **Live**, and **Concluded** states.
@@ -66,7 +69,7 @@ All user code is executed in ephemeral, isolated Docker containers with strict r
 - **Difficulty Breakdown**: Visual progress bars tracking solved problems across **Easy**, **Medium**, and **Hard** tiers.
 - **365-Day Contribution Graph**: 52-week activity heatmap with green intensity tiers and hover tooltips showing daily submission frequencies.
 - **Source Code Viewer Modal**: Inspect past submissions with a read-only Monaco Editor, runtime benchmarks, verdict tags, and one-click code copying.
-- **Public Profiles**: Share progress and stats via `/profile` or `/u/:username`.
+- **Safe Special Character Routing**: Profiles and leaderboard links safely handle handles with special characters (e.g., `#`, `@`) using URI encoding and a dedicated `/api/users/me/profile` endpoint.
 
 ### 7. 💬 Community Discussion & Editorial Forum
 - **Categorized Forums**: Filter and post discussions across **Solutions**, **Help**, **Contests**, and **Algorithms**.
@@ -88,7 +91,7 @@ All user code is executed in ephemeral, isolated Docker containers with strict r
                                                   │                        │
                                   ┌───────────────▼────────────────────────┴───────────────┐
                                   │                   Express.js API Server                │
-                                  │               (JWT Auth • Auto-Migration)              │
+                                  │         (JWT Auth • Auto-Migration • Nixpacks)         │
                                   └───────────────┬────────────────────────▲───────────────┘
                                                   │                        │
                                             Enqueue Job               Emit Progress
@@ -98,12 +101,12 @@ All user code is executed in ephemeral, isolated Docker containers with strict r
                                   │           (Worker Pool • Concurrency Limit = 2)        │
                                   └───────────────┬────────────────────────────────────────┘
                                                   │
-                                            Spawn Sandbox
+                                            Cloud Execution (?wait=true)
                                                   │
                                   ┌───────────────▼────────────────────────────────────────┐
-                                  │               Docker Isolated Container                │
-                                  │    Node:20 • Python:3.12 • GCC:14 • Temurin:21-JDK     │
-                                  │   (--network none • 256MB RAM • Read-Only • Cap-Drop)  │
+                                  │                 Judge0 CE Cloud Sandbox                │
+                                  │     Node.js 20 • Python 3.12 • GCC 14.1 • JDK 17       │
+                                  │        (Precise CPU Timing • Memory Footprint)         │
                                   └────────────────────────────────────────────────────────┘
                                                   │
                                              Write Results
@@ -138,6 +141,7 @@ The database schema is managed automatically upon server startup via non-destruc
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Register a new coder account | No |
 | `POST` | `/api/auth/login` | Authenticate and obtain JWT token | No |
+| `GET` | `/api/users/me/profile` | Retrieve authenticated user's profile and stats safely | **Yes** |
 | `GET` | `/api/users/:username/profile` | Get solve stats, 365-day heatmap data, and recent submissions | No |
 
 ### Problems & Execution
@@ -174,27 +178,18 @@ The database schema is managed automatically upon server startup via non-destruc
 ### 1. Prerequisites
 Ensure you have the following installed on your machine:
 - [Node.js (v18+)](https://nodejs.org/)
-- [MySQL Server (v8.0+)](https://dev.mysql.com/downloads/mysql/)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) *(running with Linux containers)*
+- [MySQL Server (v8.0+)](https://dev.mysql.com/downloads/mysql/) *(or a cloud MySQL instance like Railway MySQL, Aiven, or PlanetScale)*
+*(Note: Docker is **not required** — code execution is handled natively by the cloud judge engine).*
 
-### 2. Pull Runner Docker Images
-Pull the lightweight execution environments once:
-```powershell
-docker pull node:20-alpine
-docker pull python:3.12-alpine
-docker pull gcc:14
-docker pull eclipse-temurin:21-jdk-alpine
-```
-
-### 3. Database Setup
-Log into MySQL and initialize the database using the provided schema and seed files:
+### 2. Database Setup
+Log into MySQL and initialize the database:
 ```powershell
 mysql -u root -p < database/schema.sql
 mysql -u root -p < database/seed.sql
 ```
-*(The server also includes automatic startup migration to ensure tables and columns remain synced).*
+*(The server also includes automatic startup migrations to ensure tables, columns, and sample seed data remain synchronized).*
 
-### 4. Configure Environment Variables
+### 3. Configure Environment Variables
 Create a `.env` file inside the `server/` directory:
 ```env
 PORT=5000
@@ -207,8 +202,9 @@ DB_PASSWORD=your_mysql_password
 JWT_SECRET=your_super_secret_jwt_key_2026
 JUDGE_CONCURRENCY=2
 ```
+*Note: If deploying on Railway, the database connection is automatically detected via `MYSQL_URL` or `DATABASE_URL`.*
 
-### 5. Install Dependencies & Run
+### 4. Install Dependencies & Run
 From the project root directory:
 ```powershell
 # Install root, server, and client dependencies
@@ -223,11 +219,31 @@ npm run dev
 
 ---
 
+## ☁️ Cloud Deployment Guide
+
+### Backend on Railway
+1. Push your repository to GitHub.
+2. Link the repository on [Railway](https://railway.app/).
+3. Add a **MySQL** plugin on Railway.
+4. Set the following environment variables on the backend service:
+   - `JWT_SECRET`: A secure random secret string
+   - `CLIENT_URL`: URL of your deployed frontend (e.g. `https://your-frontend.vercel.app`)
+5. Railway will automatically build and deploy via the included `railway.json` configuration.
+
+### Frontend on Vercel
+1. Import the repository in [Vercel](https://vercel.com/).
+2. Set **Root Directory** to `client`.
+3. Configure the build environment variable:
+   - `VITE_API_BASE_URL`: `https://your-railway-backend.up.railway.app/api`
+4. Deploy!
+
+---
+
 ## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl + Enter` / `Cmd + Enter` | **Run Code** against Custom Input in Docker sandbox |
+| `Ctrl + Enter` / `Cmd + Enter` | **Run Code** against Custom Input in sandbox |
 | `Ctrl + Shift + Enter` / `Cmd + Shift + Enter` | **Submit Solution** to Asynchronous Judge Queue |
 | `Shift + Alt + F` / `Ctrl + Shift + F` | **Format Code** in Monaco Editor |
 | `Escape` | Close Code Viewer / Discussion Modals |
@@ -274,9 +290,11 @@ CodeForge/
 │   │   ├── auth.js              # JWT Authentication Middleware
 │   │   ├── db.js                # MySQL Connection Pool & Auto-Migration
 │   │   ├── index.js             # Express API Endpoints & SSE Streaming
-│   │   ├── judge.js             # Docker Sandbox Runner, Memory Profiler & Diagnostics
+│   │   ├── judge.js             # Judge0 CE Runner, Memory Profiler & Diagnostics
 │   │   └── queue.js             # Asynchronous Concurrency JudgeQueue
-│   └── package.json
+│   ├── package.json
+│   └── railway.json             # Railway Deployment Specification
+├── railway.json                 # Monorepo Deployment Configuration
 ├── package.json                 # Monorepo Workspace Scripts
 └── README.md                    # Project Documentation
 ```
