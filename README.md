@@ -49,15 +49,26 @@ An enterprise-grade, full-stack **Online Coding Judge and Competitive Programmin
 - **One-Click Example Copy**: Interactive floating copy buttons on example input/output blocks in problem statements.
 - **⚠️ Full Error Traceback & Compiler Stderr**: Complete compiler errors and runtime tracebacks (e.g. Python `ValueError`, C++ segmentation faults) are surfaced with visual alerts in the results panel.
 
-### 4. ☁️ High-Speed Cloud Execution Engine (Judge0 CE)
-All user code is executed securely via cloud-based judge infrastructure powered by **Judge0 CE**:
-- **Zero Local Docker Dependency**: No local Docker daemon or heavy containers required on your machine or deployment server.
-- **Ultra-Low Latency**: Near-instant execution (< 5ms runner spin-up for compiled C++ / Python / JS).
-- **Precise Profiling**: Accurate millisecond-level execution runtimes and peak memory profiling.
-- **Comprehensive Status Detection**: Full support for Accepted (3), Time Limit Exceeded (5), Compilation Error (6), and Runtime Errors (7–14).
-- **Cloud-Ready**: Works out of the box on cloud hosting platforms such as Railway, Render, Fly.io, and AWS without privileged container requirements.
+### 4. ⚡ 100% Offline Local & Cloud Code Execution Engine
+Code execution is powered by a high-performance local process sandbox with zero internet or Docker requirements:
+- **100% Offline Capable**: Runs completely locally using the host machine's installed compilers (`node`, `python`, `g++`, `javac`). Zero external API calls or network dependencies during classroom/offline presentations.
+- **Zero Docker Overhead**: Spawns isolated ephemeral execution sub-processes with automated cleanup in OS temporary directories.
+- **Ultra-Low Latency**: Sub-millisecond runner overhead and native compiler performance.
+- **Precise Profiling**: High-resolution execution runtimes measured via `performance.now()` alongside peak memory footprints.
+- **Comprehensive Status Detection**: Full support for Accepted, Wrong Answer, Time Limit Exceeded (5-second timeout), Compilation Error (with compiler stderr), and Runtime Errors (with stack traces).
 
-### 5. 🏆 Interactive Contests Engine & Dynamic Standings
+### 5. 👥 Team Structure & Role Contributions (4-Member Team)
+
+| Role | Responsibility Area | Key Module Owned | Primary Technologies |
+|---|---|---|---|
+| **Member 1: Frontend Developer** | Client UI / UX & IDE Lead | Monaco IDE, SplitPane, DiffViewer, SSE Client | React 18, Vite, Monaco Editor, CSS |
+| **Member 2: Backend Developer** | System & API Architect | REST Endpoints, Auth Pipeline, JudgeQueue Concurrency | Node.js, Express, JWT, bcryptjs, SSE Server |
+| **Member 3: Database Engineer** | Data & Schema Specialist | 8 Relational Tables, Connection Pool, Auto-Migrations | MySQL 8.0, `mysql2/promise`, SQL Aggregations |
+| **Member 4: Judge & Sandbox Lead** | Execution & Sandboxing | Multi-Language Local Compilers, Timeout & Limits | Node child_process (`spawn`), GCC, Python, JDK |
+
+> 📖 **Full Presentation Defense Guide**: Detailed 30-second pitches, architectural breakdowns, and examiner Q&As for each member are documented in [PRESENTATION_GUIDE.md](PRESENTATION_GUIDE.md).
+
+### 6. 🏆 Interactive Contests Engine & Dynamic Standings
 - **Live Countdown Timer**: Dynamic clock transitioning smoothly between **Upcoming**, **Live**, and **Concluded** states.
 - **Contest Problem Sets**: Problems labeled by contest order (**A**, **B**, **C**) with custom score weights (e.g. 100 pts, 200 pts, 300 pts).
 - **ICPC / LeetCode Scoreboard Matrix**:
