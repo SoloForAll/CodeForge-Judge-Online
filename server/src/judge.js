@@ -1,15 +1,18 @@
-﻿// Code execution via Judge0 CE API (https://ce.judge0.com)
-// Free, public, no authentication required, specialized for online judge execution.
+// 100% Offline Local Code Execution Engine
+// Executes user code using locally installed compilers (Node.js, Python, GCC/g++, Java)
+import { spawn } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
 
-const JUDGE0_URL = 'https://ce.judge0.com/submissions?wait=true';
 const TIME_LIMIT_SECONDS = 5.0;
 const MAX_OUTPUT_BYTES = 64 * 1024;
 
 const LANGUAGES = {
-  JavaScript: { id: 97,  name: 'JavaScript (Node.js 20.17.0)', compile: false, baseMemory: 32.4 },
-  Python:     { id: 100, name: 'Python (3.12.5)',              compile: false, baseMemory: 15.6 },
-  'C++':      { id: 105, name: 'C++ (GCC 14.1.0)',             compile: true,  baseMemory: 4.2  },
-  Java:       { id: 91,  name: 'Java (JDK 17.0.6)',            compile: true,  baseMemory: 46.8 }
+  JavaScript: { name: 'JavaScript (Node.js)', compile: false, baseMemory: 32.4, ext: 'js' },
+  Python:     { name: 'Python 3',             compile: false, baseMemory: 15.6, ext: 'py' },
+  'C++':      { name: 'C++ (GCC)',            compile: true,  baseMemory: 4.2,  ext: 'cpp' },
+  Java:       { name: 'Java (JDK)',           compile: true,  baseMemory: 46.8, ext: 'java' }
 };
 
 export const supportedLanguages = Object.keys(LANGUAGES);
@@ -19,67 +22,191 @@ function normalize(value) {
 }
 
 /**
- * Calls Judge0 CE API synchronously with ?wait=true
+ * Spawns a child process with timeout and I/O capturing.
+ */
+function executeProcess(command, args, cwd, input = '', timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    let finished = false;
+
+    const proc = spawn(command, args, {
+      cwd,
+      windowsHide: true,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      try {
+        proc.kill('SIGKILL');
+      } catch {}
+    }, timeoutMs);
+
+    if (input) {
+      try {
+        proc.stdin.write(input);
+      } catch {}
+    }
+    try {
+      proc.stdin.end();
+    } catch {}
+
+    proc.stdout.on('data', (chunk) => {
+      if (stdout.length < MAX_OUTPUT_BYTES) {
+        stdout += chunk.toString();
+      }
+    });
+
+    proc.stderr.on('data', (chunk) => {
+      if (stderr.length < MAX_OUTPUT_BYTES) {
+        stderr += chunk.toString();
+      }
+    });
+
+    proc.on('error', (err) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      resolve({ code: 1, stdout, stderr: err.message, timedOut: false });
+    });
+
+    proc.on('close', (code) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      resolve({ code: timedOut ? 1 : (code ?? 0), stdout, stderr, timedOut });
+    });
+  });
+}
+
+/**
+ * Executes source code completely offline using local compilers/interpreters.
  * Returns: { stdout, stderr, code, timedOut, outputExceeded, compileFailed, runtimeMs, memoryMb }
  */
-async function runJudge0(config, sourceCode, input) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+async function runLocal(language, sourceCode, input) {
+  const config = LANGUAGES[language];
+  const uniqueId = `codeforge_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const tempDir = path.join(os.tmpdir(), uniqueId);
 
-  let response;
+  await fs.mkdir(tempDir, { recursive: true });
+
   try {
-    response = await fetch(JUDGE0_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        language_id: config.id,
-        source_code: sourceCode,
-        stdin: input || '',
-        cpu_time_limit: TIME_LIMIT_SECONDS
-      }),
-      signal: controller.signal
-    });
-  } catch (err) {
-    clearTimeout(timer);
-    if (err.name === 'AbortError') {
-      return { stdout: '', stderr: '', code: 1, timedOut: true, outputExceeded: false, compileFailed: false, runtimeMs: 5000, memoryMb: config.baseMemory };
+    const startTime = performance.now();
+
+    if (language === 'JavaScript') {
+      const filePath = path.join(tempDir, 'solution.js');
+      await fs.writeFile(filePath, sourceCode, 'utf8');
+
+      const res = await executeProcess('node', ['solution.js'], tempDir, input, TIME_LIMIT_SECONDS * 1000);
+      const runtimeMs = Math.max(1, Math.round(performance.now() - startTime));
+      return {
+        stdout: res.stdout,
+        stderr: res.stderr.trim(),
+        code: res.code,
+        timedOut: res.timedOut,
+        outputExceeded: Buffer.byteLength(res.stdout) > MAX_OUTPUT_BYTES,
+        compileFailed: false,
+        runtimeMs,
+        memoryMb: config.baseMemory
+      };
     }
-    throw new Error(`Judge0 API unreachable: ${err.message}`);
+
+    if (language === 'Python') {
+      const filePath = path.join(tempDir, 'solution.py');
+      await fs.writeFile(filePath, sourceCode, 'utf8');
+
+      const res = await executeProcess('python', ['-u', 'solution.py'], tempDir, input, TIME_LIMIT_SECONDS * 1000);
+      const runtimeMs = Math.max(1, Math.round(performance.now() - startTime));
+      return {
+        stdout: res.stdout,
+        stderr: res.stderr.trim(),
+        code: res.code,
+        timedOut: res.timedOut,
+        outputExceeded: Buffer.byteLength(res.stdout) > MAX_OUTPUT_BYTES,
+        compileFailed: false,
+        runtimeMs,
+        memoryMb: config.baseMemory
+      };
+    }
+
+    if (language === 'C++') {
+      const srcPath = path.join(tempDir, 'solution.cpp');
+      const binPath = path.join(tempDir, 'solution.exe');
+      await fs.writeFile(srcPath, sourceCode, 'utf8');
+
+      // Compile
+      const compileRes = await executeProcess('g++', ['-O2', 'solution.cpp', '-o', 'solution.exe'], tempDir, '', 10000);
+      if (compileRes.code !== 0) {
+        return {
+          stdout: '',
+          stderr: compileRes.stderr.trim() || 'Compilation failed',
+          code: 1,
+          timedOut: false,
+          outputExceeded: false,
+          compileFailed: true,
+          runtimeMs: 10,
+          memoryMb: config.baseMemory
+        };
+      }
+
+      // Execute
+      const execStart = performance.now();
+      const res = await executeProcess(binPath, [], tempDir, input, TIME_LIMIT_SECONDS * 1000);
+      const runtimeMs = Math.max(1, Math.round(performance.now() - execStart));
+      return {
+        stdout: res.stdout,
+        stderr: res.stderr.trim(),
+        code: res.code,
+        timedOut: res.timedOut,
+        outputExceeded: Buffer.byteLength(res.stdout) > MAX_OUTPUT_BYTES,
+        compileFailed: false,
+        runtimeMs,
+        memoryMb: config.baseMemory
+      };
+    }
+
+    if (language === 'Java') {
+      const srcPath = path.join(tempDir, 'Main.java');
+      await fs.writeFile(srcPath, sourceCode, 'utf8');
+
+      // Compile
+      const compileRes = await executeProcess('javac', ['Main.java'], tempDir, '', 12000);
+      if (compileRes.code !== 0) {
+        return {
+          stdout: '',
+          stderr: compileRes.stderr.trim() || 'Compilation failed',
+          code: 1,
+          timedOut: false,
+          outputExceeded: false,
+          compileFailed: true,
+          runtimeMs: 10,
+          memoryMb: config.baseMemory
+        };
+      }
+
+      // Execute
+      const execStart = performance.now();
+      const res = await executeProcess('java', ['-Xmx256m', 'Main'], tempDir, input, TIME_LIMIT_SECONDS * 1000);
+      const runtimeMs = Math.max(1, Math.round(performance.now() - execStart));
+      return {
+        stdout: res.stdout,
+        stderr: res.stderr.trim(),
+        code: res.code,
+        timedOut: res.timedOut,
+        outputExceeded: Buffer.byteLength(res.stdout) > MAX_OUTPUT_BYTES,
+        compileFailed: false,
+        runtimeMs,
+        memoryMb: config.baseMemory
+      };
+    }
+
+    throw new Error(`Unsupported language: ${language}`);
   } finally {
-    clearTimeout(timer);
+    // Cleanup temporary execution files
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
   }
-
-  if (!response.ok) {
-    throw new Error(`Judge0 API returned HTTP ${response.status}: ${await response.text()}`);
-  }
-
-  const data = await response.json();
-  const statusId = data.status?.id || 0;
-
-  const stdout = data.stdout || '';
-  const stderr = (data.stderr || '').trim();
-  const compileOutput = (data.compile_output || '').trim();
-  const timedOut = statusId === 5;
-  const compileFailed = statusId === 6;
-  const isRuntimeError = statusId >= 7 && statusId <= 14;
-
-  const runtimeMs = data.time != null ? Math.max(1, Math.round(Number(data.time) * 1000)) : 10;
-  const memoryMb = data.memory != null ? Number((Number(data.memory) / 1024).toFixed(1)) : config.baseMemory;
-
-  const outputExceeded = Buffer.byteLength(stdout) > MAX_OUTPUT_BYTES;
-  const code = (statusId === 3) ? 0 : 1;
-  const effectiveStderr = compileFailed ? compileOutput : (stderr || (isRuntimeError ? (data.message || data.status?.description || 'Runtime error') : ''));
-
-  return {
-    stdout,
-    stderr: effectiveStderr,
-    code,
-    timedOut,
-    outputExceeded,
-    compileFailed,
-    runtimeMs,
-    memoryMb
-  };
 }
 
 /** Runs a supported language against hidden tests with progress callbacks and deep diagnostic metrics. */
@@ -115,7 +242,7 @@ export async function judgeSubmission(language, sourceCode, tests, onProgress) {
       });
     }
 
-    const result = await runJudge0(config, sourceCode, test.input_data);
+    const result = await runLocal(language, sourceCode, test.input_data);
     const caseRuntimeMs = result.runtimeMs || 10;
     const caseMemoryMb = result.memoryMb || config.baseMemory;
     accumulatedRuntime += caseRuntimeMs;
@@ -167,13 +294,14 @@ export async function runCustomCode(language, sourceCode, customInput) {
     throw error;
   }
 
-  const result = await runJudge0(config, sourceCode, customInput || '');
+  const result = await runLocal(language, sourceCode, customInput || '');
   return {
     stdout: result.stdout,
     stderr: result.stderr,
     code: result.code,
     timedOut: result.timedOut,
     outputExceeded: result.outputExceeded,
+    compileFailed: result.compileFailed,
     runtimeMs: result.runtimeMs,
     memoryMb: result.memoryMb
   };
